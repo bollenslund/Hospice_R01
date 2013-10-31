@@ -1,0 +1,7 @@
+/*Code index for Hospice R01 Project
+All code kept in github repository Hospice_R01*/
+
+year_append.sas:
+Takes Claims data files from raw_sas directory and merges 2007-2010
+claims into data files by type of claims data (hospice_base, 
+hospice_revenue, etc.)
