@@ -1,3 +1,9 @@
+/*********************************************************************/
+/*********************************************************************/
+/* Part 1 - Process base hospice into single file with all years  */
+/*********************************************************************/
+/*********************************************************************/
+
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\raw_sas';
 
 data work.hospice_base_2007;
@@ -41,6 +47,12 @@ run;
 proc append base=hospice_base data=hospice_base_2010;
 run;
 
+/*********************************************************************/
+/*********************************************************************/
+/* Part 2 - Drop beneficiaries with first claim before Sept 2008     */
+/*********************************************************************/
+/*********************************************************************/
+
 proc sort data=hospice_base out=hospice_base1;
 	by bene_id CLM_FROM_DT;
 run;
@@ -52,7 +64,8 @@ data hospice_base2; set hospice_base1;
 run; 
 
 
-/*identifies beneficiaries with first claim*/
+/*identifies beneficiaries with first claim prior to Sept 2008
+these beneficiaries should be excluded from the sample*/
 data indicator;
 	set hospice_base2;
 		if indic2 = 1 and clm_from_dt < '01SEP2008'd;
@@ -61,6 +74,8 @@ run;
 data indicator1;
 	set indicator (keep = bene_id indic);
 run;
+
+/*assigns the date indicator for exclusion to all claims for the bid*/
 proc sql;
 	create table hospice_base3
 	  as select *
@@ -76,6 +91,7 @@ proc freq data=hospice_base3;
 		table indic;
 run;
 
+/*drops beneficiaries with first claim before Sept 2013*/
 data hospice_base4;
 	set hospice_base3;
 		if indic = 1 then delete;
@@ -83,6 +99,7 @@ run;
 proc freq data=hospice_base4;
 	table indic2;
 RUN;
+/*view frequencies of first claim start date by bid*/
 proc freq data=hospice_base4;
 	where indic2 = 1;
 		table clm_from_dt;
@@ -92,6 +109,11 @@ proc sort data=hospice_base4;
 	by bene_id clm_from_dt;
 run;
 
+/*********************************************************************/
+/*********************************************************************/
+/* Part 3 - Bring in revenue code days to base claims                */
+/*********************************************************************/
+/*********************************************************************/
 
 data Hospice_revenue;
 	set Hospice_revenue_2007;
@@ -114,16 +136,17 @@ data hospice_revenue1;
 	rev_code = REV_CNTR + 0;
 run;
 
-
+/*drop revenue codes that aren't relevant (not hospice level of care)*/
 data hospice_revenue2;
 	set hospice_revenue1;
-		if rev_code > 649 and rev_code < 660
+		if rev_code > 649 and rev_code < 660;
 run;
 
 proc sort data=hospice_revenue2 out=hospice_revenue3;
 	by bene_id CLM_ID CLM_THRU_DT;
 run;
 
+/*Creates total days for each revenue code by claim id*/
 data hospice_revenue4;
 	set hospice_revenue3;
 		retain tot_650 tot_651 tot_652 tot_655 tot_656 tot_657;
@@ -150,9 +173,12 @@ data hospice_revenue4;
 					if rev_code = 656 then tot_656 = tot_656 + REV_CNTR_UNIT_CNT;
 					if rev_code = 657 then tot_657 = tot_657 + REV_CNTR_UNIT_CNT;
 					end;
+		/*converts hours to days for rev code 652*/
 		tot_652_days = floor(tot_652/24);
 		drop tot_652;
 run;
+/*keeps just one entry per claim id with the total days 
+for each rev code*/
 data hospice_revenue5;
 	set hospice_revenue4;
 		by bene_id CLM_id CLM_THRU_DT;
@@ -160,6 +186,8 @@ data hospice_revenue5;
 		if last.clm_id then output;
 run;
 
+/*Creates total days for each revenue code by beneficiary (across
+all claims in the revenue code files*/
 data hospice_revenue6;
 	set hospice_revenue5;
 		retain total_650 total_651 total_652 total_655 total_656 total_657;
@@ -187,11 +215,15 @@ data hospice_revenue6;
 					total_657 = total_657 + tot_657;
 					end;
 run;
+
+/*keeps just the final observation with the totals*/
 data hospice_revenue7;
 	set hospice_revenue6;
 		by bene_id CLM_id CLM_THRU_DT;
 		if last.bene_id then output;
 run;
+
+/*creates dataset with just the beneficiary ID and revenue code day totals*/
 data total_rev_center;
 	set hospice_revenue7 (keep = bene_id total_650 total_651 total_652 total_655 total_656 total_657);
 run;
@@ -200,6 +232,11 @@ proc sort data=hospice_base4 out=hospice_base_rev;
 	by clm_id;
 run;
 
+/*merges hospice base claims with revenue center by claim id*/
+/**************************************************************************/
+/*Check this merge - It needs to be updated since should just merge on benef.
+id since now we have totals across all claims*/
+/**************************************************************************/
 proc sql;
 	create table hospice_base_rev_1
 	  as select *
