@@ -49,14 +49,9 @@ outpatient
 		set ccw.&clm_type._&yr._&file.;
 	run;
 
-	/*create empty dataset*/
+	/*create dataset to merge in additional years*/
 	data &clm_type._&file.;
 		set &clm_type._&file._&yr.;
-		if bene_id='.' then delete;	
-	run;
-
-	/*add 2007 data to the empty dateset*/
-	proc append base=&clm_type._&file. data=&clm_type._&file._&yr.;
 	run;
 
 	/*invoke macro to process additional years*/
@@ -68,7 +63,6 @@ outpatient
 	data merged.&clm_type._&file.;
 	set work.&clm_type._&file.;
 	run;
-
 %mend;
 
 /*carrier*/
