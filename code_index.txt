@@ -5,3 +5,12 @@ year_append.sas:
 Takes Claims data files from raw_sas directory and merges 2007-2010
 claims into data files by type of claims data (hospice_base, 
 hospice_revenue, etc.)
+
+
+Hospice_Claims.sas:
+Drops beneficiaries that don't have first claim within Sept 2008 and Nov 2009
+Checks for claims that span a single hospice stay and merges claim start and end
+dates, costs
+Merges all revenue code days by beneficiary
+Structures data so there is one line per beneficiary with variables
+           for each of their hospice stays
