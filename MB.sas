@@ -71,4 +71,11 @@ data death_fin;
 	drop i year_death yrdiff;
 run;
 
+/*
+yrdiff Frequency Percent Cumulative
+Frequency Cumulative
+Percent 
+0 202754 100.00 202754 100.00 
+*/
+
 BENE_AGE_AT_END_REF_YR BENE_BIRTH_DT BENE_SEX_IDENT_CD BENE_RACE_CD STATE_CODE BENE_COUNTY_CD BENE_ZIP_CD
