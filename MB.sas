@@ -69,3 +69,7 @@ data mb_ab_fin2;
 	drop start startyear diff;
 run;
 /*missing 4 of the patients from hospice data*/
+
+/*to do tomorrow:
+do the medicare and hmo coverage
+*/
