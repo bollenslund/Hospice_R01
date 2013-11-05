@@ -1,50 +1,15 @@
 /*********************************************************************/
 /*********************************************************************/
-/* Part 1 - Process base hospice into single file with all years  */
+/* Start with base claims file that is merged 2007-2010  */
 /*********************************************************************/
 /*********************************************************************/
 
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\raw_sas';
 
-data work.hospice_base_2007;
-        set ccw.hospice_2007_base_claims_j;
-run;
-data work.hospice_base_2008;
-        set ccw.hospice_2008_base_claims_j;
-run;
-data work.hospice_base_2009;
-        set ccw.hospice_2009_base_claims_j;
-run;
-data work.hospice_base_2010;
-        set ccw.hospice_2010_base_claims_j;
-run;
-data work.hospice_base;
-        set hospice_base_2007;
-                if FI_CLM_PROC_DT = . then delete;
-run;        /*create an empty dataset*/
-data work.hospice_revenue_2007;
-        set ccw.hospice_2007_revenue_center_j;
-run;
-data work.hospice_revenue_2008;
-        set ccw.hospice_2008_revenue_center_j;
-run;
-data work.hospice_revenue_2009;
-        set ccw.hospice_2009_revenue_center_j;
-run;
-data work.hospice_revenue_2010;
-        set ccw.hospice_2010_revenue_center_j;
-run;
-proc freq data=hospice_revenue_2008;
-        table REV_CNTR;
-run;
+libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 
-proc append base=hospice_base data=hospice_base_2007;
-run;
-proc append base=hospice_base data=hospice_base_2008;
-run;
-proc append base=hospice_base data=hospice_base_2009;
-run;
-proc append base=hospice_base data=hospice_base_2010;
+data work.hospice_base;
+        set merged.hospice_base_claims_j;
 run;
 
 /*********************************************************************/
@@ -115,19 +80,8 @@ run;
 /*********************************************************************/
 /*********************************************************************/
 
-data Hospice_revenue;
-        set Hospice_revenue_2007;
-                if REV_CNTR_NDC_QTY = . then delete;
-run;
-
-
-proc append base = hospice_revenue data = Hospice_revenue_2007;
-run;
-proc append base = hospice_revenue data = Hospice_revenue_2008;
-run;
-proc append base = hospice_revenue data = Hospice_revenue_2009;
-run;
-proc append base = hospice_revenue data = Hospice_revenue_2010;
+data work.hospice_revenue;
+        set merged.hospice_revenue_center_j;
 run;
 
 /*numerical conversion*/
