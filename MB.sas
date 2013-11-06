@@ -73,3 +73,74 @@ run;
 /*to do tomorrow:
 do the medicare and hmo coverage
 */
+
+data medihmo;
+	set hospice_startdate;
+	mhmonth = month(start);
+	mhstartyr = year(start) - 1;
+	mhendyr = year(start);
+	call symput ('mo', 'mhmonth');
+	drop startyear;
+	%let mo1 = &mo-1;
+	%let mo2 = &mo+1;
+run;
+proc sql;
+	create table medihmo1
+	as select *
+	from mb_ab a
+	left join medihmo b
+	on a.bene_id = b.bene_id;
+quit;
+data medihmo2;
+	set medihmo1;
+	array mdcr (9) BENE_MDCR_ENTLMT_BUYIN_IND_01 BENE_MDCR_ENTLMT_BUYIN_IND_02 BENE_MDCR_ENTLMT_BUYIN_IND_03 BENE_MDCR_ENTLMT_BUYIN_IND_04 BENE_MDCR_ENTLMT_BUYIN_IND_05 
+	BENE_MDCR_ENTLMT_BUYIN_IND_06 BENE_MDCR_ENTLMT_BUYIN_IND_07 BENE_MDCR_ENTLMT_BUYIN_IND_08 BENE_MDCR_ENTLMT_BUYIN_IND_09;
+	array mdcr1 (9) BENE_MDCR_ENTLMT_BUYIN_IND_1 BENE_MDCR_ENTLMT_BUYIN_IND_2 BENE_MDCR_ENTLMT_BUYIN_IND_3 BENE_MDCR_ENTLMT_BUYIN_IND_4 BENE_MDCR_ENTLMT_BUYIN_IND_5
+	BENE_MDCR_ENTLMT_BUYIN_IND_6 BENE_MDCR_ENTLMT_BUYIN_IND_7 BENE_MDCR_ENTLMT_BUYIN_IND_8 BENE_MDCR_ENTLMT_BUYIN_IND_9;
+	do i = 1 to 9;
+		mdcr1(i) = mdcr(i);
+	end;
+run;
+/*
+	rename BENE_MDCR_ENTLMT_BUYIN_IND_01 = BENE_MDCR_ENTLMT_BUYIN_IND_1;
+	rename BENE_MDCR_ENTLMT_BUYIN_IND_02 = BENE_MDCR_ENTLMT_BUYIN_IND_2;
+	rename BENE_MDCR_ENTLMT_BUYIN_IND_03 = BENE_MDCR_ENTLMT_BUYIN_IND_3;
+	rename BENE_MDCR_ENTLMT_BUYIN_IND_04 = BENE_MDCR_ENTLMT_BUYIN_IND_4;
+	rename BENE_MDCR_ENTLMT_BUYIN_IND_05 = BENE_MDCR_ENTLMT_BUYIN_IND_5;
+	rename BENE_MDCR_ENTLMT_BUYIN_IND_06 = BENE_MDCR_ENTLMT_BUYIN_IND_6;
+	rename BENE_MDCR_ENTLMT_BUYIN_IND_07 = BENE_MDCR_ENTLMT_BUYIN_IND_7;
+	rename BENE_MDCR_ENTLMT_BUYIN_IND_08 = BENE_MDCR_ENTLMT_BUYIN_IND_8;
+	rename BENE_MDCR_ENTLMT_BUYIN_IND_09 = BENE_MDCR_ENTLMT_BUYIN_IND_9;
+	rename BENE_HMO_IND_01 = BENE_HMO_IND_1;
+	rename BENE_HMO_IND_02 = BENE_HMO_IND_2;
+	rename BENE_HMO_IND_03 = BENE_HMO_IND_3;
+	rename BENE_HMO_IND_04 = BENE_HMO_IND_4;
+	rename BENE_HMO_IND_05 = BENE_HMO_IND_5;
+	rename BENE_HMO_IND_06 = BENE_HMO_IND_6;
+	rename BENE_HMO_IND_07 = BENE_HMO_IND_7;
+	rename BENE_HMO_IND_08 = BENE_HMO_IND_8;
+	rename BENE_HMO_IND_09 = BENE_HMO_IND_9;
+*/
+run;
+
+%macro comparison;
+	data medihmo3;
+		set medihmo2;
+		if start = . then delete;
+		do i = mhstartyr to mhendyr;
+			if i = mhstartyr then %do j = &mo2 %to 12;
+		end;
+	run;
+
+data medihmo2;
+	set medihmo1;
+run;
+
+data medihmo1;
+    set medihmo;
+    do i = mhstartyr to mhendyr;
+        if i = mhstartyr then j = &mo;
+		else if i = mhendyr then  k = &mo1;
+     end;
+run;
+
