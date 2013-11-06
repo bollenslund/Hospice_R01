@@ -493,12 +493,13 @@ run;
 	data medihmo3a_1;
 		set medihmo3a;
 		%let month = mhmonth;
-		%do i = &month %to 12;
+		b = &month;
+		%do i = '&month' %to 12;
 			if BENE_MDCR_ENTLMT_BUYIN_IND_&i = '3' then j_1_&i = 1;
 			if BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'C' then j_1_&i = 1;
 		%end;
 	run;
-	/*
+	
 	data medihmo3b_1;
 		set medihmo3b;
 		%do i = 1 %to 12;
@@ -507,7 +508,7 @@ run;
 			if BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'C' then j_2_&i = 1;
 		%end;
 	run;
-	*/
+	
 %mend;
 %medi;
 proc sql;
@@ -517,12 +518,24 @@ proc sql;
 	left join medihmo3b_1 b
 	on a.bene_id = b.bene_id;
 quit;
-%macro medi1;
-	data medihmo3_1;
-		set medihmo3;
-		insurance = 0;
-		if j_1_&test = j_2_&test then insurance = 1;
-	run;
-%mend;
-%medi1;
 
+data medihmo3_1;
+	set medihmo3;
+	rename j_2_1 = j_1_13;
+	rename j_2_2 = j_1_14;
+	rename j_2_3 = j_1_15;
+	rename j_2_4 = j_1_16;
+	rename j_2_5 = j_1_17;
+	rename j_2_6 = j_1_18;
+	rename j_2_7 = j_1_19;
+	rename j_2_8 = j_1_20;
+	rename j_2_9 = j_1_21;
+	rename j_2_10 = j_1_22;
+	rename j_2_11 = j_1_23;
+	rename j_2_12 = j_1_24;
+run;
+
+%macro scan;
+	%do i = 2 %to 24;
+		%let j = %eval(&i - 1);
+		blah = 
