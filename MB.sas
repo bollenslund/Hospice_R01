@@ -141,17 +141,49 @@ data mhendmonth&mos;
 	if mhmonth = &mos;
 	%let m&mos = &mos;
 	%do i = 1 %to &&m&mos;
-		if BENE_MDCR_ENTLMT_BUYIN_IND_&i = '3' then j_2_&i = 1;
-		if BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'C' then j_2_&i = 1;
+		%let lim = %eval(&i + 12);
+		if BENE_MDCR_ENTLMT_BUYIN_IND_&i = '3' then j_1_&lim = 1;
+		if BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'C' then j_1_&lim = 1;
 		if BENE_MDCR_ENTLMT_BUYIN_IND_&i = '0' or BENE_MDCR_ENTLMT_BUYIN_IND_&i = '1'
 		or BENE_MDCR_ENTLMT_BUYIN_IND_&i = '2' or BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'A'
-		or BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'B' then j_2_&i = 0;
+		or BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'B' then j_1_&lim = 0;
 	%end;
+run;
+proc sql;
+	create table mhmonth&mos
+	as select *
+	from mhstartmonth&mos a
+	left join mhendmonth&mos b
+	on a.bene_id = b.bene_id;
+quit;
+proc datasets nolist;
+	delete mhstartmonth&mos mhendmonth&mos;
+run;
+data mo&mos;
+	set mhmonth&mos;
+	retain indicator i;
+	i = 1;
+	indicator = 0;
+	%let end = %eval(&mos + 11);
+	%put &mos &end;
+	instart = j_1_&mos;
+	%do i = &mos %to &end;
+		%let k = %eval(&i + 1);
+		%put &i &k;
+		diff = j_1_&k - j_1_&i;
+		if diff ~= 0 then indicator = indicator + 1;
+		i = i + 1;
+	%end;
+	insend = j_1_&k;
 run;
 %mend;
 %months(1);%months(2);%months(3);%months(4);%months(5);%months(6);%months(7);%months(8);
 %months(9);%months(10);%months(11);%months(12);
 
+data mo3_1;
+	set mo3;
+	if indicator >= 1;
+run;
 
 proc sql;
 	create table medihmo3
@@ -182,6 +214,7 @@ data medihmo3_2;
 	set medihmo3_1;
 	%do i = 2 %to 24;
 		%let k = %eval(&i - 1);
+
 		diff = j_1_&i - j_1_&k;
 		if diff ~= 0 and j_1_&k ~= . and j_1_&i ~= 0 then idicator = 1;
 	%end;
