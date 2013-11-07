@@ -490,27 +490,40 @@ data medihmo3b_1;
 run;
 
 %macro medi;
-	data medihmo3a_1;
-		set medihmo3a;
-		%let month = mhmonth;
-		b = &month;
-		%do i = '&month' %to 12;
+data medihmo3a_1;
+	set medihmo3a;
+	if mhmonth = 1 then do;
+	%let m = 1;
+	%put &m;
+	end;
+	if mhmonth = 2 then do;
+	%let m = 2;
+	%put &m;
+	end;
+		%do i = &m %to 12;
+			j_1_&i = .;
 			if BENE_MDCR_ENTLMT_BUYIN_IND_&i = '3' then j_1_&i = 1;
 			if BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'C' then j_1_&i = 1;
 		%end;
-	run;
-	
-	data medihmo3b_1;
-		set medihmo3b;
-		%do i = 1 %to 12;
-			j_2_&i = 0;
-			if BENE_MDCR_ENTLMT_BUYIN_IND_&i = '3' then j_2_&i = 1;
-			if BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'C' then j_2_&i = 1;
-		%end;
-	run;
-	
+		
+run;
 %mend;
 %medi;
+%macro test;
+data mhmonth10;
+	set medihmo3a;
+	if mhmonth = 10;
+	%let m10 = 10;
+	%do i = &m10 %to 12;
+		if BENE_MDCR_ENTLMT_BUYIN_IND_&i = '3' then j_1_&i = 1;
+		if BENE_MDCR_ENTLMT_BUYIN_IND_&i = 'C' then j_1_&i = 1;
+		if BENE
+	%end;
+run;
+%mend;
+%test;
+
+
 proc sql;
 	create table medihmo3
 	as select *
@@ -535,7 +548,14 @@ data medihmo3_1;
 	rename j_2_12 = j_1_24;
 run;
 
-%macro scan;
+%macro scan1;
+data medihmo3_2;
+	set medihmo3_1;
 	%do i = 2 %to 24;
-		%let j = %eval(&i - 1);
-		blah = 
+		%let k = %eval(&i - 1);
+		diff = j_1_&i - j_1_&k;
+		if diff ~= 0 and j_1_&k ~= . and j_1_&i ~= 0 then idicator = 1;
+	%end;
+run;
+%mend;
+%scan1;
