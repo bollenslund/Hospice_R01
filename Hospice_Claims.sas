@@ -1,51 +1,17 @@
 /*********************************************************************/
 /*********************************************************************/
-/* Part 1 - Process base hospice into single file with all years  */
+/* Part 1 - Start with merged hospice claims base file 2007-10  */
 /*********************************************************************/
 /*********************************************************************/
 
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\raw_sas';
+libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
+libname wk_fldr 'J:\Geriatrics\Geri\Hospice Project\Hospice\working'; 
 
-data work.hospice_base_2007;
-        set ccw.hospice_2007_base_claims_j;
-run;
-data work.hospice_base_2008;
-        set ccw.hospice_2008_base_claims_j;
-run;
-data work.hospice_base_2009;
-        set ccw.hospice_2009_base_claims_j;
-run;
-data work.hospice_base_2010;
-        set ccw.hospice_2010_base_claims_j;
-run;
 data work.hospice_base;
-        set hospice_base_2007;
-                if FI_CLM_PROC_DT = . then delete;
-run;        /*create an empty dataset*/
-data work.hospice_revenue_2007;
-        set ccw.hospice_2007_revenue_center_j;
-run;
-data work.hospice_revenue_2008;
-        set ccw.hospice_2008_revenue_center_j;
-run;
-data work.hospice_revenue_2009;
-        set ccw.hospice_2009_revenue_center_j;
-run;
-data work.hospice_revenue_2010;
-        set ccw.hospice_2010_revenue_center_j;
-run;
-proc freq data=hospice_revenue_2008;
-        table REV_CNTR;
-run;
+        set merged.hospice_base_claims_j;
+run;        
 
-proc append base=hospice_base data=hospice_base_2007;
-run;
-proc append base=hospice_base data=hospice_base_2008;
-run;
-proc append base=hospice_base data=hospice_base_2009;
-run;
-proc append base=hospice_base data=hospice_base_2010;
-run;
 
 /*********************************************************************/
 /*********************************************************************/
@@ -111,24 +77,14 @@ run;
 
 /*********************************************************************/
 /*********************************************************************/
-/* Part 3 - Bring in revenue code days to base claims                */
+/* Part 3 - Get revenue code day totals by type by bene id           */
 /*********************************************************************/
 /*********************************************************************/
 
-data Hospice_revenue;
-        set Hospice_revenue_2007;
-                if REV_CNTR_NDC_QTY = . then delete;
+data hospice_revenue;
+        set merged.hospice_revenue_center_j;
 run;
 
-
-proc append base = hospice_revenue data = Hospice_revenue_2007;
-run;
-proc append base = hospice_revenue data = Hospice_revenue_2008;
-run;
-proc append base = hospice_revenue data = Hospice_revenue_2009;
-run;
-proc append base = hospice_revenue data = Hospice_revenue_2010;
-run;
 
 /*numerical conversion*/
 data hospice_revenue1;
@@ -229,15 +185,29 @@ data total_rev_center;
 run;
 
 
+/*********************************************************************/
+/*********************************************************************/
+/* Part 4 - Check claims for multiple claims spanning continuous
+hospice stays, merge total costs and start/end dates to get a list 
+of unique hospice stays       */
+/*********************************************************************/
+/*********************************************************************/
+
+proc sort data=hospice_base4 out=hospice_base5;
+        by bene_id clm_from_dt clm_thru_dt;
+run;
+
+
+/*create daydiff variable = start date of current claim to end date of
+previous claim - if 0 or 1, then continous stay*/
 data hospice_base6;
         set hospice_base5;
                 by bene_id clm_from_dt clm_thru_dt;
-                rev_dif = abs(rev_code - lag(rev_code));
                 daydiff = CLM_FROM_DT - LAG(CLM_THRU_DT);
-                if first.bene_id then rev_dif = 0;
                 if first.bene_id then daydiff = 999;
 run;
 
+/*merge costs, end dates for claims that are for cont. stays*/
 data hospice_base7;
         set hospice_base6;
                 retain totalcost start end;
@@ -254,6 +224,7 @@ data hospice_base7;
         format start date9. end date9.;
 run;
 
+/*
 data hospice_base8;
         set hospice_base7;
         retain rev_total;
@@ -262,10 +233,11 @@ data hospice_base8;
                         if first.start then rev_total = rev_days;
                         if rev_dif ~= 0 then rev_total = rev_days;
 run;
+*/
 
-
+/*assign indicator for final claim for the stay*/
 data hospice_base9;
-        set hospice_base8;
+        set hospice_base7;
                 retain j ;
                         by bene_id start;
                                 /*
@@ -280,6 +252,7 @@ proc sort data=hospice_base9 out=hospice_base10;
 by bene_id end;
 run;
 
+/*
 data hospice_base11;
         set hospice_base10;
                 retain tot_650 tot_651 tot_652 tot_655 tot_656 tot_657;
@@ -307,13 +280,15 @@ data total_rev_centers;
                 by bene_id;
                 if last.bene_id;
 run;
+*/
 /**************************************************************/
 /**************************************************************/
 /***********************ICD 9 CODE*****************************/
 /**************************************************************/
 /**************************************************************/
 
-proc sort data=hospice_base11 out=icd; by bene_id start; run;
+/*just keep first 5 diagnosis codes for the first claim for a hospice stay*/
+proc sort data=hospice_base10 out=icd; by bene_id start; run;
 data ICD1;
         set icd (keep = bene_id PRNCPAL_DGNS_CD start ICD_DGNS_CD1 ICD_DGNS_CD2 ICD_DGNS_CD3 ICD_DGNS_CD4 ICD_DGNS_CD5);
                 by bene_id start;
@@ -337,7 +312,12 @@ run;
 /**************************************************************/
 /**************************************************************/
 
-proc sort data=hospice_base11 out=provider; by bene_id start; run;
+/*check to see if provider changes during a continuous stay
+that spans multiple claims
+provider_i is count of number of different providers for that stay
+assigns first provider id recorded for that hospice stay as the provider
+of record for the analysis*/
+proc sort data=hospice_base10 out=provider; by bene_id start; run;
 data provider1;
         set provider (keep = bene_id start PRVDR_NUM);
                 by bene_id start;
@@ -354,18 +334,21 @@ data provider1;
                         provider_i = i;
                         drop i prov_diff provider_num;
 run;
+/*keeps list of provider count provider_i for each stay*/
 data provider2a;
         set provider1;
         by bene_id start;
                 if last.start;
                 drop provider;
 run;
+/*keeps first provider id for the stay*/
 data provider2b;
         set provider1;
         by bene_id start;
                 if first.start;
                 drop provider_i;
 run;
+/*table of first provider id to assign to stay and count of number of providers for reference*/
 proc sql;
         create table provider3
         as select *
@@ -382,8 +365,11 @@ run;
 /*********************Discharge Codes*************************/
 /*************************************************************/
 /*************************************************************/
+
+/*create indicator for change in discharge code for claims that span
+a continuous hospice stay*/
 data discharge;
-        set hospice_base11 (keep = bene_id start PTNT_DSCHRG_STUS_CD j);
+        set hospice_base10 (keep = bene_id start PTNT_DSCHRG_STUS_CD j);
                 by bene_id start;
                 retain i;
                         discharge_num = PTNT_DSCHRG_STUS_CD + 0;
@@ -399,33 +385,41 @@ data discharge;
                         drop PTNT_DSCHRG_STUS_CD;
                         discharge_i= i;
 run;
+/*just keep discharge code for last claim and assign it to the whole stay*/
 data discharge1;
         set discharge;
         if j = 1;
         drop discharge_num discharge_diff i j;
 run;
 
+/*
 data hospice_base12;
-        set hospice_base11;
+        set hospice_base10;
         if j = 1;
         drop rev_code rev_days rev_dif rev_total tot_650 tot_651 tot_652 tot_655 tot_656 tot_657;
 run;
+*/
 
+/*bring in discharge destination code to base hospice stays dataset
+this hospice base dataset still has multiple lines per stay based on claims*/
 proc sql;
         create table hospice_base12a
-        as select *
-        from hospice_base12 a
+        as select a.*,b.discharge,b.discharge_i
+        from hospice_base10 a
         left join discharge1 b
         on a.bene_id = b.bene_id and a.start = b.start;
 quit;
 
+/*bring in the provider id and count to  base hospice dataset*/
 proc sql;
         create table hospice_base12b
-        as select *
+        as select a.*,b.provider,b.provider_i
         from hospice_base12a a
         left join provider3 b
         on a.bene_id = b.bene_id and a.start= b.start;
 quit;
+
+/*bring in first 5 diagnoses for each stay*/
 proc sql;
         create table hospice_base12c
         as select *
@@ -632,13 +626,12 @@ data work.roughdata;
         set ccw.rough_data_1;
 run;
 
-/*for use for other datasets*/
-
+/*Dataset containing the first hospice claim for each beneficiary*/
 data unique;
 	set macro5;
 	by bene_id;
 	if first.bene_id;
 run;
-data ccw.unique;
+data wk_fldr.unique;
 	set unique;
 run;
