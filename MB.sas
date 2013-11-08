@@ -214,6 +214,7 @@ data months1;
 	if indicator = 0 and instart = 0 and insend=0 then delete;
 run;
 data months2;
+	retain bene_id start indicator instart insend list;
 	set months1 (keep = bene_id start indicator list instart insend);
 run;
 proc sort data=months2;
@@ -309,11 +310,57 @@ proc datasets nolist;
 	delete hmo1 hmo2 hmo3 hmo4 hmo5 hmo6 hmo7 hmo8 hmo9 hmo10 hmo11 hmo12;
 run;
 
+data test;
+	set hmonths;
+	if indicator = 0 and instart = 1 and insend = 1;
+run;
+
 data hmonths1;
+	retain bene_id start indicator instart insend list;
 	set hmonths (keep = bene_id start indicator list instart insend);
 	if indicator = 0 and instart = 1 and insend=1 then delete;
 	if indicator >= 1 and instart = 0 and insend=1 then delete;
 	if indicator >= 1 and instart = 1 and insend=0 then delete;
 	if indicator >= 1 and instart = 1 and insend = 1 then delete;
 	if indicator >= 1 and instart = 0 and insend = 0 then delete;
+run;
+/*from 210947 to 168269 we should go over*/
+
+data months3;
+	set months2;
+	medi_i = indicator;
+	label medi_i = "Indicator of a change in status in Medicare plan";
+	medi_start = instart;
+	label medi_start = "Status of Medicare at the start of 12 month period";
+	medi_end = insend;
+	label medi_end = "Status of Medicare at the end of the 12 month period";
+	medi_change = list ;
+	label medi_change = "List of the months of when Medicare status changed";
+	drop indicator instart insend list;
+run;
+
+data hmonths2;
+	set hmonths1;
+	hmo_i = indicator;
+	label hmo_i = "Indicator of a change in status in HMO plan";
+	hmo_start = instart;
+	label hmo_start = "Status of HMO at the start of 12 month period";
+	hmo_end = insend;
+	label hmo_end = "Status of HMO at the end of the 12 month period";
+	hmo_change = list;
+	label hmo_end = "List of the months of when HMO status changed";
+	drop indicator instart insend list;
+run;
+
+proc sql;
+	create table medi_hmo
+	as select *
+	from months3 a
+	left join hmonths2 b
+	on a.bene_id = b.bene_id
+	and a.start = b.start;
+quit;
+
+data ccw.medi_hmo;
+	set medi_hmo;
 run;
