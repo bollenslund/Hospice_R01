@@ -1,5 +1,5 @@
 libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
-libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\raw_sas';
+libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
 data mb_ab;
 	set merged.mbsf_ab_summary;
@@ -142,7 +142,7 @@ run;
 data mhendmonth&mos;
 	set medihmo3b;
 	if mhmonth = &mos;
-	%let m&mos = %eval(&mos-1);
+	%let m&mos = &mos;
 	%do i = 1 %to &&m&mos;
 		%let lim = %eval(&i + 12);
 		%put &i &lim;
@@ -162,37 +162,37 @@ proc sql;
 	left join mhendmonth&mos b
 	on a.bene_id = b.bene_id;
 quit;
-/*
+
 proc datasets nolist;
 	delete mhstartmonth&mos mhendmonth&mos;
 run;
-*/
+
 data mo&mos;
 	set mhmonth&mos;
 	retain indicator i;
 	i = 1;
 	indicator = 0;
-	%let end = %eval(&mos + 10);
+	%let end = %eval(&mos + 11);
 	%put &mos &end;
 	instart = j_1_&mos;
 	list = "           ";
 	%do i = &mos %to &end;
 		%let k = %eval(&i + 1);
 		%put &i &k;
-		i = i + 1;
 		if j_1_&k ~= j_1_&i then do;
 		indicator = indicator + 1;
 		i1 = put(i,8.);
 		list = catx(',',list,i1);
 		end;
+		i = i + 1;
 	%end;
 	insend = j_1_&k;
 run;
-/*
+
 proc datasets nolist;
 	delete mhmonth&mos;
 run;
-*/
+
 proc sort data = mo&mos;
 	by bene_id;
 run;
@@ -200,23 +200,120 @@ run;
 %months(1);%months(2);%months(3);%months(4);%months(5);%months(6);%months(7);%months(8);
 %months(9);%months(10);%months(11);%months(12);
 
-
-
-%macro testing;
-	%do i = 1 %to 12;
-		data mos&i;
-			set mo&i;
-			if indicator > 1;
-		run;
-	%end;
-%mend;
-%testing;
-
-data test;
-	set Mhstartmonth4;
-	if bene_id = 'ZZZZZZZ3k3kkZuk';
+data months;
+	set mo1 mo2 mo3 mo4 mo5 mo6 mo7 mo8 mo9 mo10 mo11 mo12;
 run;
-data test1;
-	set Mhendmonth4;
-	if bene_id = 'ZZZZZZZ3k3kkZuk';
+proc datasets nolist;
+	delete mo1 mo2 mo3 mo4 mo5 mo6 mo7 mo8 mo9 mo10 mo11 mo12 mos1 mos2 mos3 mos4 mos5 mos6 mos7 mos8 mos9 mos10 mos11 mos12;
+run;
+proc freq data=months;
+	table indicator;
+run;
+data months1;
+	set months;
+	if indicator = 0 and instart = 0 and insend=0 then delete;
+run;
+data months2;
+	set months1 (keep = bene_id start indicator list instart insend);
+run;
+proc sort data=months2;
+	by bene_id;
+run;
+data ccw.medi_months;
+	set months2;
+run;
+proc freq data=medihmo3a;
+	table BENE_HMO_IND_1;
+run;
+%macro hmonths(mos);
+data hstartmonth&mos;
+	set medihmo3a;
+	if mhmonth = &mos;
+	%let m&mos = &mos;
+	%do i = &&m&mos %to 12;
+		%put &i;
+		if BENE_HMO_IND_&i = '0' then j_1_&i = 0;
+		if BENE_HMO_IND_&i = '1' then j_1_&i = 1;
+		if BENE_HMO_IND_&i = '2' then j_1_&i = 1;
+		if BENE_HMO_IND_&i = '4' then j_1_&i = 1;
+		if BENE_HMO_IND_&i = 'A' then j_1_&i = 1;
+		if BENE_HMO_IND_&i = 'B' then j_1_&i = 1;
+		if BENE_HMO_IND_&i = 'C' then j_1_&i = 1;
+	%end;
+run;
+data hendmonth&mos;
+	set medihmo3b;
+	if mhmonth = &mos;
+	%let m&mos = &mos;
+	%do i = 1 %to &&m&mos;
+		%let lim = %eval(&i + 12);
+		%put &i &lim;
+		if BENE_HMO_IND_&i = '0' then j_1_&lim = 0;
+		if BENE_HMO_IND_&i = '1' then j_1_&lim = 1;
+		if BENE_HMO_IND_&i = '2' then j_1_&lim = 1;
+		if BENE_HMO_IND_&i = '4' then j_1_&lim = 1;
+		if BENE_HMO_IND_&i = 'A' then j_1_&lim = 1;
+		if BENE_HMO_IND_&i = 'B' then j_1_&lim = 1;
+		if BENE_HMO_IND_&i = 'C' then j_1_&lim = 1;
+	%end;
+run;
+proc sql;
+	create table hmonth&mos
+	as select *
+	from hstartmonth&mos a
+	left join hendmonth&mos b
+	on a.bene_id = b.bene_id;
+quit;
+
+proc datasets nolist;
+	delete hstartmonth&mos hendmonth&mos;
+run;
+
+data hmo&mos;
+	set hmonth&mos;
+	retain indicator i;
+	i = 1;
+	indicator = 0;
+	%let end = %eval(&mos + 11);
+	%put &mos &end;
+	instart = j_1_&mos;
+	list = "           ";
+	%do i = &mos %to &end;
+		%let k = %eval(&i + 1);
+		%put &i &k;
+		if j_1_&k ~= j_1_&i then do;
+		indicator = indicator + 1;
+		i1 = put(i,8.);
+		list = catx(',',list,i1);
+		end;
+		i = i + 1;
+	%end;
+	insend = j_1_&k;
+run;
+
+proc datasets nolist;
+	delete hmonth&mos;
+run;
+
+proc sort data = hmo&mos;
+	by bene_id;
+run;
+%mend;
+%hmonths(1);%hmonths(2);%hmonths(3);%hmonths(4);%hmonths(5);%hmonths(6);%hmonths(7);%hmonths(8);
+%hmonths(9);%hmonths(10);%hmonths(11);%hmonths(12);
+
+data hmonths;
+	set hmo1 hmo2 hmo3 hmo4 hmo5 hmo6 hmo7 hmo8 hmo9 hmo10 hmo11 hmo12;
+run;
+proc datasets nolist;
+	delete hmo1 hmo2 hmo3 hmo4 hmo5 hmo6 hmo7 hmo8 hmo9 hmo10 hmo11 hmo12;
+run;
+
+data hmonths1;
+	set hmonths (keep = bene_id start indicator list instart insend);
+	if indicator = 0 and instart = 1 and insend=1 then delete;
+	if indicator >= 1 and instart = 0 and insend=1 then delete;
+	if indicator >= 1 and instart = 1 and insend=0 then delete;
+	if indicator >= 1 and instart = 1 and insend = 1 then delete;
+	if indicator >= 1 and instart = 0 and insend = 0 then delete;
 run;
