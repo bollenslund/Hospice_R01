@@ -428,9 +428,13 @@ proc sql;
         on a.bene_id = b.bene_id and a.start=b.start;
 quit;
 
-
-*********************** Bring in my rough code ***************************************;
-
+/********************************************************************************/
+/********************************************************************************/
+/* Restructure dataset so one observation per bene id, with details
+on each claim as separate variables    */
+/********************************************************************************/
+/********************************************************************************/
+/*create count variable of each claim by bene id*/
 data hospice_base13; set hospice_base12c;
         by bene_id;
         if first.bene_id then indic3 = 1;
@@ -452,6 +456,11 @@ proc freq data=hospice_base14;
 run;
 */
 
+/*macro to create set of variables for each hospice stay, up to max of 21 stays
+keep detailed information for first 3 stays, then limited information for any
+remaining stays
+Resulting dataset = macro1
+Has 1 row per beneficiar ID with details on multiple hospice stays*/
 option nospool;
 %macro test;
         %do j = 1 %to 21;
@@ -562,6 +571,7 @@ proc sort data = Total_rev_center;
         by bene_id;
 run;
 
+/*bring in total revenue center days by type for each beneficiary*/
 proc sql;
         create table macro3
         as select *
@@ -570,6 +580,7 @@ proc sql;
         on a.bene_id = b.bene_id;
 quit;
 
+/*cleans up final dataset by dropping unneeded variables*/
 data macro4;
         set macro3;
         drop CLM_ID NCH_NEAR_LINE_REC_IDENT_CD NCH_CLM_TYPE_CD CLM_FROM_DT CLM_THRU_DT NCH_WKLY_PROC_DT FI_CLM_PROC_DT CLM_FREQ_CD
