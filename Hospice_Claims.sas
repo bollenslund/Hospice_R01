@@ -1,3 +1,12 @@
+/* Prepares hospice claims for analysis
+1. Drops beneficiaries with first claim before Sept 2008
+2. Totals revenue code days by revenue code type for each beneficiary
+3. Collapses claims data into data for individual hospice stays
+4. Restructures dataset so one row per beneficiary with details
+about all their hospice stays as separate variables
+
+Final dataset saved as wk_fldr.hs_stays_cleaned */
+
 /*********************************************************************/
 /*********************************************************************/
 /* Part 1 - Start with merged hospice claims base file 2007-10  */
@@ -400,12 +409,29 @@ data hospice_base12;
 run;
 */
 
+/**********************************************************************************/
+/* Bring in overall stay details */
+/**********************************************************************************/
+
+/*First - create dataset that is a list of stays, not claims */
+data hospice_base11;
+set hospice_base10;
+if j=1;
+drop CLM_ID  CLM_FROM_DT CLM_THRU_DT NCH_WKLY_PROC_DT FI_CLM_PROC_DT CLM_FREQ_CD
+                 CLM_MDCR_NON_PMT_RSN_CD CLM_PMT_AMT NCH_PRMRY_PYR_CLM_PD_AMT NCH_PRMRY_PYR_CD   
+                PTNT_DSCHRG_STUS_CD CLM_TOT_CHRG_AMT NCH_PTNT_STATUS_IND_CD CLM_UTLZTN_DAY_CNT NCH_BENE_DSCHRG_DT PRNCPAL_DGNS_CD PRNCPAL_DGNS_VRSN_CD
+                ICD_DGNS_CD1-ICD_DGNS_CD25 ICD_DGNS_VRSN_CD1-ICD_DGNS_VRSN_CD25 CLM_HOSPC_START_DT_ID BENE_HOSPC_PRD_CNT  CLM_LINE_NUM REV_CNTR REV_CNTR_DT 
+                 REV_CNTR_UNIT_CNT REV_CNTR_RATE_AMT REV_CNTR_PRVDR_PMT_AMT REV_CNTR_BENE_PMT_AMT REV_CNTR_PMT_AMT_AMT REV_CNTR_TOT_CHRG_AMT REV_CNTR_NCVRD_CHRG_AMT REV_CNTR_DDCTBL_COINSRNC_CD
+                REV_CNTR_NDC_QTY REV_CNTR_NDC_QTY_QLFR_CD 
+                FST_DGNS_E_CD FST_DGNS_E_VRSN_CD ICD_DGNS_E_CD1-ICD_DGNS_E_CD12 ICD_DGNS_E_VRSN_CD1-ICD_DGNS_E_VRSN_CD12; 
+run;
+
 /*bring in discharge destination code to base hospice stays dataset
 this hospice base dataset still has multiple lines per stay based on claims*/
 proc sql;
         create table hospice_base12a
         as select a.*,b.discharge,b.discharge_i
-        from hospice_base10 a
+        from hospice_base11 a
         left join discharge1 b
         on a.bene_id = b.bene_id and a.start = b.start;
 quit;
@@ -583,20 +609,8 @@ quit;
 /*cleans up final dataset by dropping unneeded variables*/
 data macro4;
         set macro3;
-        drop CLM_ID NCH_NEAR_LINE_REC_IDENT_CD NCH_CLM_TYPE_CD CLM_FROM_DT CLM_THRU_DT NCH_WKLY_PROC_DT FI_CLM_PROC_DT CLM_FREQ_CD
-                FI_NUM CLM_MDCR_NON_PMT_RSN_CD CLM_PMT_AMT NCH_PRMRY_PYR_CLM_PD_AMT NCH_PRMRY_PYR_CD PRVDR_STATE_CD AT_PHYSN_UPIN AT_PHYSN_NPI
-                PTNT_DSCHRG_STUS_CD CLM_TOT_CHRG_AMT NCH_PTNT_STATUS_IND_CD CLM_UTLZTN_DAY_CNT NCH_BENE_DSCHRG_DT PRNCPAL_DGNS_CD PRNCPAL_DGNS_VRSN_CD
-                ICD_DGNS_CD1 ICD_DGNS_VRSN_CD1 ICD_DGNS_CD2 ICD_DGNS_VRSN_CD2 ICD_DGNS_CD3 ICD_DGNS_VRSN_CD3 ICD_DGNS_CD4 ICD_DGNS_VRSN_CD4 ICD_DGNS_CD5 ICD_DGNS_VRSN_CD5
-                ICD_DGNS_CD6 ICD_DGNS_VRSN_CD6 ICD_DGNS_CD7 ICD_DGNS_VRSN_CD7 ICD_DGNS_CD8 ICD_DGNS_VRSN_CD8 ICD_DGNS_CD9 ICD_DGNS_VRSN_CD9 ICD_DGNS_CD10 ICD_DGNS_VRSN_CD10 
-                ICD_DGNS_CD11 ICD_DGNS_VRSN_CD11 ICD_DGNS_CD12 ICD_DGNS_VRSN_CD12 CLM_HOSPC_START_DT_ID BENE_HOSPC_PRD_CNT CLM_MDCL_REC CLM_LINE_NUM REV_CNTR REV_CNTR_DT HCPCS_1ST_MDFR_CD
-                HCPCS_2ND_MDFR_CD REV_CNTR_UNIT_CNT REV_CNTR_RATE_AMT REV_CNTR_PRVDR_PMT_AMT REV_CNTR_BENE_PMT_AMT REV_CNTR_PMT_AMT_AMT REV_CNTR_TOT_CHRG_AMT REV_CNTR_NCVRD_CHRG_AMT REV_CNTR_DDCTBL_COINSRNC_CD
-                REV_CNTR_NDC_QTY REV_CNTR_NDC_QTY_QLFR_CD RNDRNG_PHYSN_UPIN RNDRNG_PHYSN_NPI daydiff
-                ICD_DGNS_CD13 ICD_DGNS_VRSN_CD13 ICD_DGNS_CD14 ICD_DGNS_VRSN_CD14 ICD_DGNS_CD15 ICD_DGNS_VRSN_CD15 ICD_DGNS_CD16 ICD_DGNS_VRSN_CD16 ICD_DGNS_CD17 ICD_DGNS_VRSN_CD17 
-                ICD_DGNS_CD18 ICD_DGNS_VRSN_CD18 ICD_DGNS_CD19 ICD_DGNS_VRSN_CD19 ICD_DGNS_CD20 ICD_DGNS_VRSN_CD20 ICD_DGNS_CD21 ICD_DGNS_VRSN_CD21 ICD_DGNS_CD22 ICD_DGNS_VRSN_CD22 
-                ICD_DGNS_CD23 ICD_DGNS_VRSN_CD23 ICD_DGNS_CD24 ICD_DGNS_VRSN_CD24 ICD_DGNS_CD25 ICD_DGNS_VRSN_CD25 
-                FST_DGNS_E_CD FST_DGNS_E_VRSN_CD ICD_DGNS_E_CD1 ICD_DGNS_E_VRSN_CD1 ICD_DGNS_E_CD2 ICD_DGNS_E_VRSN_CD2 ICD_DGNS_E_CD3 ICD_DGNS_E_VRSN_CD3 ICD_DGNS_E_CD4 ICD_DGNS_E_VRSN_CD4 ICD_DGNS_E_CD5 ICD_DGNS_E_VRSN_CD5 
-                ICD_DGNS_E_CD6 ICD_DGNS_E_VRSN_CD6 ICD_DGNS_E_CD7 ICD_DGNS_E_VRSN_CD7 ICD_DGNS_E_CD8 ICD_DGNS_E_VRSN_CD8 ICD_DGNS_E_CD9 ICD_DGNS_E_VRSN_CD9 ICD_DGNS_E_CD10 ICD_DGNS_E_VRSN_CD10 ICD_DGNS_E_CD11 ICD_DGNS_E_VRSN_CD11 
-                ICD_DGNS_E_CD12 ICD_DGNS_E_VRSN_CD12 j indic3 PRVDR_NUM HCPCS_CD;
+        drop NCH_NEAR_LINE_REC_IDENT_CD NCH_CLM_TYPE_CD FI_NUM PRVDR_STATE_CD AT_PHYSN_UPIN AT_PHYSN_NPI
+          CLM_MDCL_REC daydiff j indic3 PRVDR_NUM;
                 label start = "Start Date (Stay 1)";
                 label end = "End Date (Stay 1)";
                 label totalcost = "Total Cost Spent (Stay 1)";
@@ -621,28 +635,19 @@ data macro5;
         label total_656 = "Total Days in General Inpatient Care under Hospice services (non-Respite)";
         label total_657 = "Total Number of Procedures in Hospice Physician Services";
 run;
-data ccw.final;
+data wk_fldr.hs_stays_cleaned;
         set macro5;        
 run;
 
+/*Check - drops all but the one observation with 21 stays*/
 data test;
         set macro3;
                 if totalcost21=. then delete;
 run;
-data work;
-        set ccw.rough_data;
-run;
 
-data work.roughdata;
-        set ccw.rough_data_1;
-run;
-
-/*Dataset containing the first hospice claim for each beneficiary*/
+/*Check to confirm one row per beneficiary id - no observations dropped*/
 data unique;
 	set macro5;
 	by bene_id;
 	if first.bene_id;
-run;
-data wk_fldr.unique;
-	set unique;
 run;

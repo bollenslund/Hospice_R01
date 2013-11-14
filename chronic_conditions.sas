@@ -3,7 +3,8 @@ that have been coded for each beneficiary across all claims in the 12 months
 prior to first hospice admission, and then codes categorical variables for the
 chronic conditions based on the dx codes
 
-Hospice start dates from working.unique dataset (created by Hospice_Claims program file)
+Hospice start dates from working.wk_fldr.hs_stays_cleaned dataset 
+(created by Hospice_Claims program file)
 
 Final file saved as: 
 
@@ -17,7 +18,7 @@ libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 
 /*get list of hospice start dates for each beneficiary id*/
 data hs_start_dt;
-	set int_data.unique(keep=bene_id start) ;
+	set int_data.hs_stays_cleaned(keep=bene_id start) ;
 run;
 
 /***********************************************************************/
