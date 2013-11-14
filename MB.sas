@@ -348,7 +348,7 @@ data hmonths2;
 	hmo_end = insend;
 	label hmo_end = "Status of HMO at the end of the 12 month period";
 	hmo_change = list;
-	label hmo_end = "List of the months of when HMO status changed";
+	label hmo_change = "List of the months of when HMO status changed";
 	drop indicator instart insend list;
 run;
 
@@ -364,3 +364,32 @@ quit;
 data ccw.medi_hmo;
 	set medi_hmo;
 run;
+
+data mb_ab_fin3;
+	merge mb_ab_fin2 medi_hmo;
+	by bene_id;
+run;
+
+data test;
+	set mb_ab_fin3;
+	if medi_i = .;
+run;
+
+proc sql;
+	create table test1
+	as select *
+	from test a
+	left join medihmo3a b
+	on a.bene_id = b.bene_id;
+quit;
+data test1;
+	set test1;
+	if BENE_ENROLLMT_REF_YR = . then delete;
+run;
+proc sql;
+	create table test2
+	as select *
+	from test a
+	left join medihmo3b b
+	on a.bene_id = b.bene_id;
+quit;

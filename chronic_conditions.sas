@@ -229,13 +229,14 @@ quit;
 data dx_list_test3;
 set dx_list_test2;
 dx_ind=0;
-if diag ~=. then dx_ind=1;
+if diag ~='' then dx_ind=1;
 run;
 /*view frequency table of beneficiary IDs with at least one dx code 12 months pre hospice
 approximately 5% of beneficiaries do not have any dx codes*/
 proc freq;
 table dx_ind;
 run;
+
 
 /***********************************************************************/
 /***********************************************************************/
@@ -287,7 +288,7 @@ save "J:\Geriatrics\Geri\Hospice Project\Hospice\working\dx_0_12m_2.dta",replace
 /* End of STATA code, back to SAS   */ 
 /*******************************************************************/
 
-/*bring in formatted Stata dataset of dx codes*/
+*bring in formatted Stata dataset of dx codes;
 proc import 
 datafile="J:\Geriatrics\Geri\Hospice Project\Hospice\working\dx_0_12m_2.dta" 
 out=dx_0_12m_2 replace;
