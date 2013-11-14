@@ -426,6 +426,7 @@ run;
 proc sort data=hospice_base13 out=hs_stay_ct1;
 by bene_id indic3;
 <<<<<<< HEAD
+<<<<<<< HEAD
 run;
 
 data hs_stay_ct2;
@@ -450,6 +451,10 @@ proc sort data=hospice_base13 out=hs_stay_ct1;
 by bene_id indic3;
 run;
 
+=======
+run;
+
+>>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
 =======
 run;
 
