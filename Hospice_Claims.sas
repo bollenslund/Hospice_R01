@@ -487,23 +487,33 @@ proc freq data=hs_stay_ct3;
 table count_hs_stays;
 run;
 
+/*add los variable for individual stays*/
+
+data hospice_base13a;
+set hospice_base13;
+stay_los=end-start;
+run;
+
+proc freq;
+table stay_los;
+run;
 
 /*macro to create set of variables for each hospice stay, up to max of 21 stays
 keep detailed information for first 3 stays, then limited information for any
 remaining stays
 Resulting dataset = macro1
-Has 1 row per beneficiar ID with details on multiple hospice stays*/
+Has 1 row per beneficiary ID with details on multiple hospice stays*/
 option nospool;
 %macro test;
         %do j = 1 %to 21;
                 data macro&j;
-                set hospice_base13;
+                set hospice_base13a;
                         if indic3 = &j;
                 run;
                 %if &j > 1 and &j < 4 %then %do;
                         option nospool;
                         data macro1_&j;
-                                set macro&j (keep = BENE_ID start end totalcost provider provider_i discharge discharge_i primary_icd icd_1 icd_2 icd_3 icd_4 icd_5);
+                                set macro&j (keep = BENE_ID start end stay_los totalcost provider provider_i discharge discharge_i primary_icd icd_1 icd_2 icd_3 icd_4 icd_5);
                         run;
                         proc datasets nolist;
                                 delete macro&j;
@@ -512,6 +522,7 @@ option nospool;
                                 set macro1_&j;
                                         start&j = start;
                                         end&j = end;
+										stay_los&j = stay_los;
                                         totalcost&j = totalcost;
                                         provider&j = provider;
                                         provider_i_&j = provider_i;
@@ -525,6 +536,7 @@ option nospool;
                                         icd_5_&j = icd_5;
                                         label start&j = "Start Date (Stay &j)";
                                         label end&j = "End Date (Stay &j)";
+										label stay_los&j = "Length of Stay (Stay &j)";
                                         label totalcost&j = "Total Cost Spent (Stay &j)";
                                         label provider&j = "Provider ID during Stay (Stay &j)";
                                         label provider_i_&j = "If Greater Than 1, Provider Changes within Stay (Stay &j)";
@@ -542,7 +554,7 @@ option nospool;
                                 delete macro1_&j;
                         run;        
                         data macro3_&j;
-                                set macro2_&j (keep = BENE_ID start&j end&j totalcost&j discharge&j provider&j primary_icd&j provider_i_&j discharge_i_&j icd_1_&j icd_2_&j icd_3_&j icd_4_&j icd_5_&j);
+                                set macro2_&j (keep = BENE_ID start&j end&j stay_los&j totalcost&j discharge&j provider&j primary_icd&j provider_i_&j discharge_i_&j icd_1_&j icd_2_&j icd_3_&j icd_4_&j icd_5_&j);
                         run;
                         proc datasets nolist;
                                 delete macro2_&j;
@@ -552,7 +564,7 @@ option nospool;
                 %if &j >= 4 %then %do;
                         option nospool;
                         data macro1_&j;
-                                set macro&j (keep = BENE_ID start end totalcost discharge);
+                                set macro&j (keep = BENE_ID start end stay_los totalcost discharge);
                         run;
                         proc datasets nolist;
                                 delete macro&j;
@@ -561,10 +573,12 @@ option nospool;
                                 set macro1_&j;
                                         start&j = start;
                                         end&j = end;
+										stay_los&j = stay_los;
                                         totalcost&j = totalcost;
                                         discharge&j = discharge;
                                         label start&j = "Start Date (Stay &j)";
                                         label end&j = "End Date (Stay &j)";
+										label stay_los&j = "Length of Stay (Stay &j)";
                                         label totalcost&j = "Total Cost Spent (Stay &j)";
                                         label discharge&j = "Discharge Code (Stay &j)";
                                         format start&j date9. end&j date9.;
@@ -573,7 +587,7 @@ option nospool;
                                 delete macro1_&j;
                         run;        
                         data macro3_&j;
-                                set macro2_&j (keep = BENE_ID start&j end&j totalcost&j discharge&j);
+                                set macro2_&j (keep = BENE_ID start&j end&j stay_los&j totalcost&j discharge&j);
                         run;
                         proc datasets nolist;
                                 delete macro2_&j;
@@ -674,34 +688,6 @@ data unique;
 	by bene_id;
 	if first.bene_id;
 run;
-
-/*****************************************************************/
-/*create additional variables for hospice outcomes*/
-/*****************************************************************/
-data hs_los;
-  set wk_fldr.hs_stays_cleaned;
-	rename start = start1;
-    rename end = end1;
-    rename totalcost = totalcost1;
-    rename discharge = discharge1;        
-run;
-
-data hs_los2;
-set hs_los;
-s=1;
-%do s=1 %to 21;
-	los_&s. = end&s. - start&s. ;
-    s = &s. + 1;
-end;
-run;
-
-/*add hospice length of stay, total and first stay, variables*/
-array stays{21};
- 
-
-
-
-
 
 /*****************************************************************/
 /*create output file to review with Melissa*/
