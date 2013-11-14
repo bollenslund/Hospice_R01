@@ -488,10 +488,10 @@ table count_hs_stays;
 run;
 
 /*add los variable for individual stays*/
-
 data hospice_base13a;
 set hospice_base13;
 stay_los=end-start;
+if stay_los=0 then stay_los=1;
 run;
 
 proc freq;
@@ -626,7 +626,7 @@ proc sql;
         on a.bene_id = b.bene_id;
 quit;
 
-/*bring in count of hosipce stays for each beneficiary*/
+/*bring in count of hospice stays for each beneficiary*/
 proc sort data=macro3;
 by bene_id;
 run;
@@ -649,6 +649,7 @@ data macro4;
           CLM_MDCL_REC daydiff j indic3 PRVDR_NUM;
                 label start = "Start Date (Stay 1)";
                 label end = "End Date (Stay 1)";
+				label stay_los = "Length of Stay (Stay 1)";
                 label totalcost = "Total Cost Spent (Stay 1)";
                 label provider = "Provider ID during Stay (Stay 1)";
                 label provider_i = "If Greater Than 1, Provider Changes within Stay (Stay 1)";
@@ -660,7 +661,7 @@ data macro4;
                 label icd_3 = "Diagnosis Code III (Stay 1)";
                 label icd_4 = "Diagnosis Code IV (Stay 1)";
                 label icd_5 = "Diagnosis Code V (Stay 1)";
-				label hs_stay_ct3 = "Count of hospice stays";
+				label count_hs_stays = "Count of hospice stays";
 run;
 data macro5;
         retain BENE_ID CLM_FAC_TYPE_CD CLM_SRVC_CLSFCTN_TYPE_CD ORG_NPI_NUM DOB_DT GNDR_CD BENE_RACE_CD BENE_CNTY_CD BENE_STATE_CD BENE_MLG_CNTCT_ZIP_CD start end totalcost provider provider_i discharge discharge_i icd_1 icd_2 icd_3 icd_4 icd_5;
@@ -672,8 +673,88 @@ data macro5;
         label total_656 = "Total Days in General Inpatient Care under Hospice services (non-Respite)";
         label total_657 = "Total Number of Procedures in Hospice Physician Services";
 run;
+
+/*create variable for total hospice length of stay*/
+data total_los;
+set macro5;
+array stays stay_los2-stay_los21;
+do over stays;
+if stays=. then stays=0;
+end;
+total_los=stay_los+sum(stay_los2-stay_los21);
+run;
+proc freq;
+table total_los;
+run;
+proc means;
+var total_los;
+run;
+proc freq;
+table discharge;
+run;
+/*create variable for hospice disenrollment*/
+data disenroll_1;
+set total_los;
+hs1_death=0;
+if (discharge=40|discharge=41|discharge=42)then hs1_death=1;
+run;
+
+data disenroll_2;
+set disenroll_1;
+disenr = .;
+if count_hs_stays>1 then disenr=1;
+if (count_hs_stays=1 and hs1_death=1) then disenr=0;
+if (count_hs_stays=1 and hs1_death=0) then disenr=1;
+run;
+
+proc freq;
+table disenr /missprint;
+run;
+
+/*create clean gender, age and race, ethnicity variables*/
+data clean_1;
+set disenroll_2;
+/*female*/
+female = .;
+if gndr_cd=1 then female=0;
+if gndr_cd=2 then female=1;
+label female = "Female";
+/*age*/
+age_at_enr = (start - dob_dt) / 365.25;
+label age_at_enr = "Age at 1st Hospice Enrollment";
+/*race*/
+re_white = 0;
+if  bene_race_cd=1 then re_white = 1;
+re_black = 0;
+if bene_race_cd=2 then re_black = 1;
+re_other = 0;
+if bene_race_cd=3 then re_other = 1;
+re_asian = 0;
+if bene_race_cd=4 then re_asian = 1;
+re_hispanic = 0;
+if bene_race_cd=5 then re_hispanic = 1;
+re_na = 0;
+if bene_race_cd=6 then re_na = 1;
+re_unknown = 0;
+if bene_race_cd=0 then re_unknown = 1;
+if bene_race_cd=. then re_unknown = 1;
+label re_white = "White race / ethnicity";
+label re_black = "Black race / ethnicity";
+label re_other = "Other race / ethnicity";
+label re_asian = "Asian race / ethnicity";
+label re_hispanic = "Hispanic race / ethnicity";
+label re_na = "North American Native race / ethnicity";
+label re_unknown = "Unknown race / ethnicity";
+run;
+
+proc freq data=clean_1;
+table bene_race_cd;
+run;
+
+/*saves final dataset*/
 data wk_fldr.hs_stays_cleaned;
-        set macro5;        
+        set clean_1;
+		drop stay_los2-stay_los21; 
 run;
 
 /*Check - drops all but the one observation with 21 stays*/
@@ -690,10 +771,20 @@ data unique;
 run;
 
 /*****************************************************************/
-/*create output file to review with Melissa*/
+/*Output frequency tables*/
 /*****************************************************************/
-
-data hs_output_1;
-set wk_fldr.hs_stays_cleaned;
+ods rtf file="J:\Geriatrics\Geri\Hospice Project\output\hs_freq_tab.rtf";
+proc freq data=wk_fldr.hs_stays_cleaned;
+table count_hs_stays discharge discharge_i provider_i;
 run;
+ods rtf close;
+
+/*****************************************************************/
+/*Convert dataset to stata to get additional summary statistics*/
+/*****************************************************************/
+proc export data=wk_fldr.hs_stays_cleaned 
+	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\hs_stays_cleaned.dta'
+	replace;
+	run;
+
 
