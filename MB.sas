@@ -15,7 +15,17 @@ proc sort data=mb_cc;
 	by bene_id BENE_ENROLLMT_REF_YR;
 run;
 
-/*working getting date of death information*/
+data test;
+	set mb_ab;
+	if bene_id = 'ZZZZZZZp339I3kp';
+run;
+data test3;
+	set Hospice_startdate;
+	if bene_id = 'ZZZZZZZp339I3kp';
+run;
+/************* DATE OF DEATH ******************/
+
+/*finding the date of death from the last beneficiary year (the only time the date of death is recorded)*/
 proc sort data=mb_ab out=dod;
 	by bene_id BENE_ENROLLMT_REF_YR;
 run;
@@ -24,11 +34,17 @@ data dod1;
 	by bene_id BENE_ENROLLMT_REF_YR;
 	if last.bene_id then output;
 run;
+/*only keep the variables listed in our varlist*/
 data dod2;
-	set dod1 (keep = bene_id BENE_DEATH_DT BENE_VALID_DEATH_DT_SW NDI_DEATH_DT BENE_ENROLLMT_REF_YR);
+	set dod1 (keep = bene_id BENE_DEATH_DT BENE_VALID_DEATH_DT_SW NDI_DEATH_DT BENE_ENROLLMT_REF_YR BENE_PTA_TRMNTN_CD BENE_PTB_TRMNTN_CD);
 run;
+/*total 219153. Could be due to the fact that we have people deleted from our original list*/
+/***********************************************/
 
 /*Year in which a patient is terminated*/
+/*this is a way to check if the termination codes to make sure they line up with our death dates.
+as said in the word document, this or the date of death can be used to see if a beneficiary died 
+that year. I will primarily use date of death in regards to this matter*/
 proc freq data=mb_ab;
 	table BENE_PTA_TRMNTN_CD BENE_PTB_TRMNTN_CD;
 run;
@@ -39,8 +55,21 @@ CODES:
 2 = NON-PAYMENT OF PREMIUM
 3 = VOLUNTARY WITHDRAWAL
 9 = OTHER TERMINATION
-all checked. No Date of death for any value that is not 1.
 */
+data death_check;
+	set dod2;
+	if BENE_PTA_TRMNTN_CD = 1 then delete;
+run;
+proc freq data=death_check;
+	table BENE_DEATH_DT;
+run;
+data dod2;
+	set dod2;
+	drop BENE_PTA_TRMNTN_CD BENE_PTB_TRMNTN_CD;
+run;
+/*all checked. No Date of death for any value that is not 1.*/
+
+/*creating a final mb dataset with wanted variables*/
 
 data mb_ab_fin;
 	set mb_ab (keep = bene_id BENE_ENROLLMT_REF_YR BENE_AGE_AT_END_REF_YR BENE_BIRTH_DT BENE_SEX_IDENT_CD BENE_RACE_CD STATE_CODE BENE_COUNTY_CD BENE_ZIP_CD);
@@ -53,7 +82,7 @@ run;
 
 proc sql;
 	create table mb_ab_fin1
-	as select *
+	as select a.*, b.start, b.startyear
 	from mb_ab_fin a
 	left join hospice_startdate b
 	on a.bene_id = b.bene_id;
@@ -68,12 +97,10 @@ data mb_ab_fin2;
 	if diff = 0;
 	drop start startyear diff;
 run;
-/*missing 4 of the patients from hospice data*/
+/*missing 4 of the patients from hospice data: 213516*/
 
-/*to do tomorrow:
-do the medicare and hmo coverage
-*/
 
+/******************** MEDICARE/HMO stuff ************************/
 data medihmo;
 	set hospice_startdate;
 	mhmonth = month(start);
@@ -83,7 +110,7 @@ data medihmo;
 run;
 proc sql;
 	create table medihmo1
-	as select *
+	as select a.*, b.start, b.mhmonth, b.mhstartyr, b.mhendyr
 	from mb_ab a
 	left join medihmo b
 	on a.bene_id = b.bene_id;
@@ -120,6 +147,22 @@ data medihmo3b;
 	set medihmo2;
 	if start = . then delete;
 	if BENE_ENROLLMT_REF_YR = mhendyr;
+run;
+
+data test;
+	set medihmo3a;
+	i = 1;
+run;
+proc sql;
+	create table test1
+	as select *
+	from medihmo3b a
+	left join test b
+	on a.bene_id = b.bene_id;
+quit;
+data test2;
+	set test1;
+	if i = 1 then delete;
 run;
 
 
@@ -250,9 +293,9 @@ data hendmonth&mos;
 		%let lim = %eval(&i + 12);
 		%put &i &lim;
 		if BENE_HMO_IND_&i = '0' then j_1_&lim = 0;
-		if BENE_HMO_IND_&i = '1' then j_1_&lim = 1;
-		if BENE_HMO_IND_&i = '2' then j_1_&lim = 1;
-		if BENE_HMO_IND_&i = '4' then j_1_&lim = 1;
+		if BENE_HMO_IND_&i = '1' then j_1_&lim = 0;
+		if BENE_HMO_IND_&i = '2' then j_1_&lim = 0;
+		if BENE_HMO_IND_&i = '4' then j_1_&lim = 0;
 		if BENE_HMO_IND_&i = 'A' then j_1_&lim = 1;
 		if BENE_HMO_IND_&i = 'B' then j_1_&lim = 1;
 		if BENE_HMO_IND_&i = 'C' then j_1_&lim = 1;
@@ -310,9 +353,11 @@ proc datasets nolist;
 	delete hmo1 hmo2 hmo3 hmo4 hmo5 hmo6 hmo7 hmo8 hmo9 hmo10 hmo11 hmo12;
 run;
 
-data test;
-	set hmonths;
-	if indicator = 0 and instart = 1 and insend = 1;
+proc freq data=hmonths;
+	table indicator;
+run;
+proc freq data=months;
+	table indicator;
 run;
 
 data hmonths1;
@@ -393,3 +438,42 @@ proc sql;
 	left join medihmo3b b
 	on a.bene_id = b.bene_id;
 quit;
+
+data month_freq;
+	set months;
+	if indicator = 0 and instart = 1 and insend=1 then insurance = 1;
+	if indicator = 0 and instart = 0 and insend=0 then insurance = 0;
+	if indicator >= 1 and instart = 0 and insend=1 then insurance = 2;
+	if indicator >= 1 and instart = 1 and insend=0 then insurance = 2;
+	if indicator >= 1 and instart = 1 and insend = 1 then insurance = 3;
+	if indicator >= 1 and instart = 0 and insend = 0 then insurance = 3;
+run;
+proc format;
+	value indic
+	0 = "Never had insurance"
+	1 = "Always had insurance"
+	2 = "Started with one ended with the other"
+	3 = "Started, switched, then ended with same"
+	;
+run;
+proc freq data=month_freq;
+	table insurance;
+	format insurance indic.;
+run;
+data month_freq_miss;
+	set month_freq;
+	if insurance = .;
+run;
+data hmonth_freq;
+	set hmonths;
+	if indicator = 0 and instart = 1 and insend=1 then insurance = 1;
+	if indicator = 0 and instart = 0 and insend=0 then insurance = 0;
+	if indicator >= 1 and instart = 0 and insend=1 then insurance = 2;
+	if indicator >= 1 and instart = 1 and insend=0 then insurance = 2;
+	if indicator >= 1 and instart = 1 and insend = 1 then insurance = 3;
+	if indicator >= 1 and instart = 0 and insend = 0 then insurance = 3;
+run;
+proc freq data=hmonth_freq;
+	table insurance;
+	format insurance indic.;
+run;
