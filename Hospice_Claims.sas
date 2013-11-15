@@ -466,7 +466,6 @@ proc freq data=hs_stay_ct3;
 table count_hs_stays;
 run;
 
-
 /*macro to create set of variables for each hospice stay, up to max of 21 stays
 keep detailed information for first 3 stays, then limited information for any
 remaining stays
