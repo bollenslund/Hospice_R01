@@ -419,6 +419,10 @@ run;
 
 proc freq data=hospice_base13;
         table indic3;
+<<<<<<< HEAD
+<<<<<<< HEAD
+run;                
+=======
 run;
 
 /*get table of count of stays for each beneficary id*/
@@ -443,6 +447,10 @@ proc freq data=hs_stay_ct3;
 table count_hs_stays;
 run;
 
+>>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
+=======
+run;
+
 /*get table of count of stays for each beneficary id*/
 proc sort data=hospice_base13 out=hs_stay_ct1;
 by bene_id indic3;
@@ -464,6 +472,8 @@ run;
 proc freq data=hs_stay_ct3;
 table count_hs_stays;
 run;
+
+>>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
 
 /*macro to create set of variables for each hospice stay, up to max of 21 stays
 keep detailed information for first 3 stays, then limited information for any
@@ -652,6 +662,16 @@ data unique;
 	if first.bene_id;
 run;
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+data forview;
+	set macro5;
+	if _n_ < 20;
+run;
+proc export data=forview outfile = "\\home\users$\leee20\Documents\Downloads\Melissa\Report\hospice.csv" dbms = csv label replace; run;
+=======
+=======
+>>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
 /*****************************************************************/
 /*create additional variables for hospice outcomes*/
 /*****************************************************************/
@@ -687,3 +707,8 @@ array stays{21};
 data hs_output_1;
 set wk_fldr.hs_stays_cleaned;
 run;
+
+<<<<<<< HEAD
+>>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
+=======
+>>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
