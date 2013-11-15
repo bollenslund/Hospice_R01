@@ -358,10 +358,6 @@ data discharge1;
         drop discharge_num discharge_diff i j;
 run;
 
-<<<<<<< HEAD
-=======
-
->>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
 /**********************************************************************************/
 /* Bring in overall stay details */
 /**********************************************************************************/
@@ -413,7 +409,7 @@ quit;
 on each claim as separate variables    */
 /********************************************************************************/
 /********************************************************************************/
-/*create count variable of each stay by bene id*/
+/*create count variable of each claim by bene id*/
 data hospice_base13; set hospice_base12c;
         by bene_id;
         if first.bene_id then indic3 = 1;
@@ -423,34 +419,7 @@ run;
 
 proc freq data=hospice_base13;
         table indic3;
-<<<<<<< HEAD
 run;                
-=======
-run;
-
-/*get table of count of stays for each beneficary id*/
-proc sort data=hospice_base13 out=hs_stay_ct1;
-by bene_id indic3;
-run;
-
-data hs_stay_ct2;
-set hs_stay_ct1;
-by bene_id;
-if last.bene_id then k=1;
-keep bene_id indic3 k;
-run;
-
-data hs_stay_ct3;
-set hs_stay_ct2(rename=(indic3=count_hs_stays));
-if k=1;
-drop k;
-run;
-
-proc freq data=hs_stay_ct3;
-table count_hs_stays;
-run;
-
->>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
 
 /*macro to create set of variables for each hospice stay, up to max of 21 stays
 keep detailed information for first 3 stays, then limited information for any
@@ -576,25 +545,9 @@ proc sql;
         on a.bene_id = b.bene_id;
 quit;
 
-/*bring in count of hosipce stays for each beneficiary*/
-proc sort data=macro3;
-by bene_id;
-run;
-proc sort data=hs_stay_ct3;
-by bene_id;
-run;
-
-proc sql;
-create table macro3a
-as select a.*,b.count_hs_stays
-from macro3 a
-left join hs_stay_ct3 b
-on a.bene_id = b.bene_id;
-quit; 
-
 /*cleans up final dataset by dropping unneeded variables*/
 data macro4;
-        set macro3a;
+        set macro3;
         drop NCH_NEAR_LINE_REC_IDENT_CD NCH_CLM_TYPE_CD FI_NUM PRVDR_STATE_CD AT_PHYSN_UPIN AT_PHYSN_NPI
           CLM_MDCL_REC daydiff j indic3 PRVDR_NUM;
                 label start = "Start Date (Stay 1)";
@@ -610,7 +563,6 @@ data macro4;
                 label icd_3 = "Diagnosis Code III (Stay 1)";
                 label icd_4 = "Diagnosis Code IV (Stay 1)";
                 label icd_5 = "Diagnosis Code V (Stay 1)";
-				label hs_stay_ct3 = "Count of hospice stays";
 run;
 data macro5;
         retain BENE_ID CLM_FAC_TYPE_CD CLM_SRVC_CLSFCTN_TYPE_CD ORG_NPI_NUM DOB_DT GNDR_CD BENE_RACE_CD BENE_CNTY_CD BENE_STATE_CD BENE_MLG_CNTCT_ZIP_CD start end totalcost provider provider_i discharge discharge_i icd_1 icd_2 icd_3 icd_4 icd_5;
@@ -628,7 +580,7 @@ run;
 
 /*Check - drops all but the one observation with 21 stays*/
 data test;
-        set macro5;
+        set macro3;
                 if totalcost21=. then delete;
 run;
 
@@ -639,47 +591,8 @@ data unique;
 	if first.bene_id;
 run;
 
-<<<<<<< HEAD
 data forview;
 	set macro5;
 	if _n_ < 20;
 run;
 proc export data=forview outfile = "\\home\users$\leee20\Documents\Downloads\Melissa\Report\hospice.csv" dbms = csv label replace; run;
-=======
-/*****************************************************************/
-/*create additional variables for hospice outcomes*/
-/*****************************************************************/
-data hs_los;
-  set wk_fldr.hs_stays_cleaned;
-	rename start = start1;
-    rename end = end1;
-    rename totalcost = totalcost1;
-    rename discharge = discharge1;        
-run;
-
-data hs_los2;
-set hs_los;
-s=1;
-%do s=1 %to 21;
-	los_&s. = end&s. - start&s. ;
-    s = &s. + 1;
-end;
-run;
-
-/*add hospice length of stay, total and first stay, variables*/
-array stays{21};
- 
-
-
-
-
-
-/*****************************************************************/
-/*create output file to review with Melissa*/
-/*****************************************************************/
-
-data hs_output_1;
-set wk_fldr.hs_stays_cleaned;
-run;
-
->>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
