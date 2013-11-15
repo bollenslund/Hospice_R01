@@ -425,7 +425,6 @@ run;
 /*get table of count of stays for each beneficary id*/
 proc sort data=hospice_base13 out=hs_stay_ct1;
 by bene_id indic3;
-<<<<<<< HEAD
 run;
 
 data hs_stay_ct2;
@@ -450,10 +449,6 @@ proc sort data=hospice_base13 out=hs_stay_ct1;
 by bene_id indic3;
 run;
 
-=======
-run;
-
->>>>>>> c99df7dbf835fe49cbdf1d41f4dd2be422e98414
 data hs_stay_ct2;
 set hs_stay_ct1;
 by bene_id;
