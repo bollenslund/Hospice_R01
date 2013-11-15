@@ -233,11 +233,26 @@ data hospice_base7;
         format start date9. end date9.;
 run;
 
+/*
+data hospice_base8;
+        set hospice_base7;
+        retain rev_total;
+                by bene_id start;
+                        rev_total = rev_total + rev_days;
+                        if first.start then rev_total = rev_days;
+                        if rev_dif ~= 0 then rev_total = rev_days;
+run;
+*/
+
 /*assign indicator for final claim for the stay*/
 data hospice_base9;
         set hospice_base7;
                 retain j ;
                         by bene_id start;
+                                /*
+                                if first.bene_id or rev_dif >0 or daydiff ~=1 then i = 0;
+                                else i = i + 1;
+                                */
                                 j = 0;
                                 if last.start then j = j + 1;
 run;
@@ -246,7 +261,35 @@ proc sort data=hospice_base9 out=hospice_base10;
 by bene_id end;
 run;
 
+/*
+data hospice_base11;
+        set hospice_base10;
+                retain tot_650 tot_651 tot_652 tot_655 tot_656 tot_657;
+                        by bene_id end;
+                                if first.bene_id then do;
+                                        if rev_code = 650 then tot_650 = rev_days;
+                                        if rev_code = 651 then tot_651 = rev_days;
+                                        if rev_code = 652 then tot_652 = rev_days;
+                                        if rev_code = 655 then tot_655 = rev_days;
+                                        if rev_code = 656 then tot_656 = rev_days;
+                                        if rev_code = 657 then tot_657 = rev_days;
+                                        end;
+                                else do;
+                                        if rev_code = 650 then tot_650 = tot_650 + rev_days;
+                                        if rev_code = 651 then tot_651 = tot_651 + rev_days;
+                                        if rev_code = 652 then tot_652 = tot_652 + rev_days;
+                                        if rev_code = 655 then tot_655 = tot_655 + rev_days;
+                                        if rev_code = 656 then tot_656 = tot_656 + rev_days;
+                                        if rev_code = 657 then tot_657 = tot_657 + rev_days;
+                                        end;
+run;
 
+data total_rev_centers;
+        set hospice_base11(keep = bene_id tot_650 tot_651 tot_652 tot_655 tot_656 tot_657);
+                by bene_id;
+                if last.bene_id;
+run;
+*/
 /**************************************************************/
 /**************************************************************/
 /***********************ICD 9 CODE*****************************/
@@ -358,6 +401,14 @@ data discharge1;
         drop discharge_num discharge_diff i j;
 run;
 
+/*
+data hospice_base12;
+        set hospice_base10;
+        if j = 1;
+        drop rev_code rev_days rev_dif rev_total tot_650 tot_651 tot_652 tot_655 tot_656 tot_657;
+run;
+*/
+
 /**********************************************************************************/
 /* Bring in overall stay details */
 /**********************************************************************************/
@@ -420,6 +471,16 @@ run;
 proc freq data=hospice_base13;
         table indic3;
 run;                
+/*
+data hospice_base14; set hospice_base13;
+        by bene_id;
+                if first.bene_id or rev_dif > 0 then indic4 = 1;
+                else indic4 + 1;
+run;
+proc freq data=hospice_base14;
+        table indic4;
+run;
+*/
 
 /*macro to create set of variables for each hospice stay, up to max of 21 stays
 keep detailed information for first 3 stays, then limited information for any
@@ -590,9 +651,3 @@ data unique;
 	by bene_id;
 	if first.bene_id;
 run;
-
-data forview;
-	set macro5;
-	if _n_ < 20;
-run;
-proc export data=forview outfile = "\\home\users$\leee20\Documents\Downloads\Melissa\Report\hospice.csv" dbms = csv label replace; run;
