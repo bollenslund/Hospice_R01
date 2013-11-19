@@ -329,12 +329,29 @@ run;
 ods rtf body="C:\Users\leee20\Desktop\GitHub\Hospice_R01\results.rtf";
 title "Frequency Tables";
 proc freq data=medihmo4;
-table partab nohmo age;
+table BENE_HMO_CVRAGE_TOT_MONS;
 run;
 
 data medihmo5;
 	set medihmo4;
 	if partab = 0 or nohmo = 0 or age = 0 then delete;
+	drop allmedistatus allhmostatus partab nohmo age mosdif yeardiff hmo_status medi_status deathmonth deathyr dod death_i startmonth BENE_HMO_CVRAGE_TOT_MONS BENE_STATE_BUYIN_TOT_MONS BENE_SMI_CVRAGE_TOT_MONS BENE_HI_CVRAGE_TOT_MONS BENE_PTB_TRMNTN_CD BENE_PTA_TRMNTN_CD
+	BENE_ENTLMT_RSN_CURR BENE_ENTLMT_RSN_ORIG RTI_RACE_CD startyear BENE_MDCR_STATUS_CD BENE_ESRD_IND start;
 run; 
 
+data ccw.mb_final;
+	set medihmo5;
+run;
 /*if excluded, the total is 149827*/
+
+proc sql;
+	create table formedpar
+	as select a.*, b.end
+	from medihmo5 a
+	left join ccw.unique b
+	on a.bene_id = b.bene_id;
+quit;
+
+data ccw.for_medpar;
+	set formedpar;
+run;
