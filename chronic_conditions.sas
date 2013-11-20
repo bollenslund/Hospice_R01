@@ -3,23 +3,41 @@ that have been coded for each beneficiary across all claims in the 12 months
 prior to first hospice admission, and then codes categorical variables for the
 chronic conditions based on the dx codes
 
-Hospice start dates from working.wk_fldr.hs_stays_cleaned dataset 
+Hospice start dates from working/hs_stays_cleaned dataset 
 (created by Hospice_Claims program file)
 
-Final file saved as: 
+List of beneficiaries to define sample from working/mb_final
+(created from MB12mosforward.sas program file)
+
+Final file saved as: ccw.mb_final_cc
 
 Note: There is STATA code in this file to convert dx codes from claims into
 dot format to conform with the list of dx codes associated with each of the
 chronic conditions
 */
 
-libname int_data 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
+libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 
 /*get list of hospice start dates for each beneficiary id*/
-data hs_start_dt;
-	set int_data.hs_stays_cleaned(keep=bene_id start) ;
+
+/*start with sample as defined by insurance coverage and age in master beneficiary data processing*/
+data sample;
+	set ccw.mb_final(keep=bene_id) ;
 run;
+
+/*get hospice start dates from hospice stay dataset*/
+data hs_start_dt_1;
+	set ccw.hs_stays_cleaned (keep=bene_id start);
+run;
+
+proc sql;
+create table hs_start_dt as select
+a.bene_id,b.start from
+sample a left join
+hs_start_dt_1 b
+on a.bene_id=b.bene_id;
+quit;
 
 /***********************************************************************/
 /***********************************************************************/
@@ -93,7 +111,7 @@ before hospice enrollment*/
 /***********************************************************************/
 
 /* File created:
-int_data.dx_0_12m: dx 12 months before initial hospice enrollment date
+ccw.dx_0_12m: dx 12 months before initial hospice enrollment date
 
 Saved in J:\Geriatrics\Geri\Hospice Project\Hospice\working
 
@@ -202,20 +220,20 @@ op_last_&range2._dx2
 bcarrier_last_&range2._dx2;
 run;
 /*remove blank dx codes and duplicates by beneficiary id*/
-proc sort data=dx_all_last_&range2.(where=(diag~="")) out=int_data.dx_&range1._&range2 nodupkey;
+proc sort data=dx_all_last_&range2.(where=(diag~="")) out=ccw.dx_&range1._&range2 nodupkey;
 by bene_id diag;
 run;
 
 %mend;
 
 
-/*run the macro - 12 months pre-surgery - get sas dataset int_data.dx_0_12m*/
+/*run the macro - 12 months pre-surgery - get sas dataset ccw.dx_0_12m*/
 %dx_time_range(range1=0, range2=12m, days_bef_hs=365);
 
 /*compare beneficiaries in dx code list with list of beneficiaries that
-meet our hospice start date criteria*/
+meet our hospice start date, age and insurance criteria*/
 
-proc sort data=int_data.dx_0_12m out=dx_list_test1 nodupkey;
+proc sort data=ccw.dx_0_12m out=dx_list_test1 nodupkey;
 by bene_id;
 run ;
 
@@ -255,7 +273,7 @@ code is run from
 
 /*export list of diagnosis codes to stata*/
 
-proc export data=int_data.dx_0_12m
+proc export data=ccw.dx_0_12m
 outfile="J:\Geriatrics\Geri\Hospice Project\Hospice\working\dx_0_12m.dta" replace;
 run;
 
@@ -263,6 +281,8 @@ run;
 /*put the dx codes into dot format
 This is STATA code*/
 /*******************************************************************/
+
+capture log close
 
 clear all
 set more off
@@ -482,7 +502,10 @@ CC_17_CNCRBRST
 CC_18_CNCRCLRC
 CC_19_CNCRPRST
 CC_20_CNCRLUNG
-CC_21_CNCREndM;
+CC_21_CNCREndM
+CC_AMI_isch
+CC_alzheim
+CC_cncr_chronic;
 run;
 
 %mend;
@@ -493,11 +516,45 @@ run;
 /*merge this chronic conditions information in to full list of bids from hospice claims*/
 
 proc sql;
-create table int_data.chronic_conditions_12m as select *
+create table chronic_conditions_12m_1 as select *
 from hs_start_dt a left join
 bid_dx_0_12m1 b
 on a.bene_id=b.bene_id;
 quit;
+
+data ccw.chronic_conditions_12m;
+set chronic_conditions_12m_1;
+cc_ind = 0;
+if CC_1_AMI ~= . then cc_ind = 1;
+label cc_ind = "Dx for chronic conditions indicator";
+label CC_1_AMI = "Chronic condition - AMI";
+label CC_2_ALZH = "Chronic condition - Alzheimer's Disease";
+label CC_3_ALZHDMTA = "Chronic condition - Alzheimers / Dementia";
+label CC_4_ATRIALFB = "Chronic condition - Atrial Fibrillation";
+label CC_5_CATARACT = "Chronic condition - Cataract";
+label CC_6_CHRNKIDN = "Chronic condition - Kidney disease";
+label CC_7_COPD = "Chronic condition - COPD";
+label CC_8_CHF = "Chronic condition - Heart Failure";
+label CC_9_DIABETES = "Chronic condition - Diabetes";
+label CC_10_GLAUCOMA = "Chronic condition - Glaucoma";
+label CC_11_HIPFRAC = "Chronic condition - Hip Fracture";
+label CC_12_ISCHMCHT = "Chronic condition - Ischemic Heart Dis.";
+label CC_13_DEPRESSN = "Chronic condition - Depression";
+label CC_14_OSTEOPRS = "Chronic condition - Osteoporosis";
+label CC_15_RA_OA = "Chronic condition - Arthritis";
+label CC_16_STRKETIA = "Chronic condition - Stroke / TIA";
+label CC_17_CNCRBRST = "Chronic condition - Breast Cancer";
+label CC_18_CNCRCLRC = "Chronic condition - Colorectal Cancer";
+label CC_19_CNCRPRST = "Chronic condition - Prostate Cancer";
+label CC_20_CNCRLUNG = "Chronic condition - Lung Cancer";
+label CC_21_CNCREndM = "Chronic condition - Endometrial Cancer";
+label CC_AMI_isch = "Chronic condition - AMI or Ischemic Heart Dis.";
+label CC_alzheim = "Chronic condition - Alzh or Dementia";
+label CC_cncr_chronic = "Chronic condition - Cancer (all types)";
+run;
+
+
+ods rtf file="J:\Geriatrics\Geri\Hospice Project\output\hs_cc_means.rtf";
 
 proc means;
 var CC_1_AMI
@@ -520,12 +577,31 @@ CC_17_CNCRBRST
 CC_18_CNCRCLRC
 CC_19_CNCRPRST
 CC_20_CNCRLUNG
-CC_21_CNCREndM;
+CC_21_CNCREndM
+CC_AMI_isch
+CC_alzheim
+CC_cncr_chronic;
 run;
+proc freq;
+table cc_ind /missprint;
+run;
+
+ods rtf close;
+
+
 /* the above file contains a list of beneficiary IDs with their chronic conditions variables 
 If chronic conditions variables are missing then there were no dx codes present in claims
 in the 12 months prior to hospice enrollment*/
 
-proc contents data=int_data.chronic_conditions_12m;
+
+/*merge with the master beneficary summary data file*/
+proc sql;
+create table ccw.mb_final_cc as select * from
+ccw.mb_final a left join
+ccw.chronic_conditions_12m b
+on a.bene_id=b.bene_id;
+quit;
+
+proc contents data=ccw.mb_final_cc;
 run;
 

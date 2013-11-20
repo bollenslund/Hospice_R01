@@ -14,3 +14,10 @@ dates, costs
 Merges all revenue code days by beneficiary
 Structures data so there is one line per beneficiary with variables
            for each of their hospice stays
+           
+chronic_conditions.sas:
+Collects diagnosis codes from all claims 12 months before the first hopsice
+enrollment, then creates indicator variables for each of the chronic conditions
+
+
+
