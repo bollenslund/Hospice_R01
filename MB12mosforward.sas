@@ -1,3 +1,7 @@
+/*This file processes the master beneficiary summary files and uses
+age and Medicare coverage / HMO use to define the sample of 
+hopsice enrollees to be analyzed */
+
 libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
@@ -23,12 +27,18 @@ data test3;
 	set Hospice_startdate;
 	if bene_id = 'ZZZZZZZp339I3kp';
 run;
-/************* DATE OF DEATH ******************/
 
-/*finding the date of death from the last beneficiary year (the only time the date of death is recorded)*/
+/*****************************************************************************/
+/*************              PART 1: DATE OF DEATH           ******************/
+/*****************************************************************************/
+
+/*Identify the date of death from the last beneficiary year 
+(the only time the date of death is recorded)*/
 proc sort data=mb_ab out=dod;
 	by bene_id BENE_ENROLLMT_REF_YR;
 run;
+/*get dataset of just last MBS year for each beneficiary
+define an indicator variable for presence of death date in the MBS file*/
 data dod1;
 	set dod;
 	by bene_id BENE_ENROLLMT_REF_YR;
@@ -36,18 +46,31 @@ data dod1;
 	death_i = 1;
 	if BENE_DEATH_DT = . then death_i = 0;
 run;
-/*only keep the variables listed in our varlist*/
+
+proc freq;
+table death_i;
+run;
+
+/*only keep the variables listed in our varlist
+these are from the last year that a beneficiary has an entry in the MBS file*/
 data dod2;
 	set dod1 (keep = bene_id BENE_DEATH_DT BENE_VALID_DEATH_DT_SW NDI_DEATH_DT BENE_ENROLLMT_REF_YR BENE_PTA_TRMNTN_CD BENE_PTB_TRMNTN_CD death_i);
 run;
+
+/*dataset of those that have no death year 16399 observations*/
 data test;
 	set dod2;
 	if BENE_DEATH_DT = .;
 run;
+
+/*all but 17 of 16399 of the observations are in 2010*/
 proc freq data=test;
 	table BENE_ENROLLMT_REF_YR;
 run;
-/*all but 17 of 16399 of the observations are in 2010*/
+
+/*check for difference between claims death date and NDI verified death date
+almost 98% have no difference between the two dates
+Note that only ~17% of hospice patients have NDI verified death date reported*/
 data test1;
 	set dod2;
 	diff = NDI_DEATH_DT - BENE_DEATH_DT;
@@ -60,7 +83,8 @@ data test2;
 	set test1;
 	if diff ~=0 or diff ~=.;
 run;
-/*there are around 3% of people who have different from NDI of the 36000 people who have reported NDI. Use the regular date of death?*/
+/*there are around 3% of people who have different from NDI of the 36000
+people who have reported NDI. Use the regular date of death?*/
 data dod_merge;
 	set dod2 (keep = bene_id BENE_DEATH_DT death_i BENE_VALID_DEATH_DT_SW);
 	dod = BENE_DEATH_DT;
@@ -69,10 +93,18 @@ data dod_merge;
 	format dod date9.;
 run;
 proc sort data=dod_merge; by bene_id; run;
-/*total 219153. Could be due to the fact that we have people deleted from our original list*/
+
+proc freq;
+table BENE_VALID_DEATH_DT_SW;
+run;
+/*Unique beneficiaries in MBS file: 219153. 
+In hospice claims, we have 213520 beneficiaries
+We dropped those that had first hs enrollment before Sept 2008 so that is likely
+why we have more BIDs in MBS than in HS file*/
+
 /***********************************************/
 
-/*Year in which a patient is terminated*/
+/*Check DOD vs Year in which a patient is terminated*/
 /*this is a way to check if the termination codes to make sure they line up with our death dates.
 as said in the word document, this or the date of death can be used to see if a beneficiary died 
 that year. I will primarily use date of death in regards to this matter*/
@@ -91,6 +123,7 @@ data death_check;
 	set dod2;
 	if BENE_PTA_TRMNTN_CD = 1 then delete;
 run;
+/*all beneficiaries that don't have termination code = dead do not have a deathdate*/
 proc freq data=death_check;
 	table BENE_DEATH_DT;
 run;
@@ -100,18 +133,31 @@ data dod2;
 run;
 /*all checked. No Date of death for any value that is not 1.*/
 
+
+/*****************************************************************************/
+/* PART 2: GET MBS DATASET FROM JUST HOSPICE ENROLLMENT YEAR WITH DOD ADDED  */
+/*****************************************************************************/
+
 /*creating a final mb dataset with wanted variables*/
 
+/*just required variables from all years MBS file*/
 data mb_ab_fin;
 	set mb_ab (keep = bene_id BENE_ENROLLMT_REF_YR BENE_AGE_AT_END_REF_YR BENE_BIRTH_DT BENE_SEX_IDENT_CD BENE_RACE_CD STATE_CODE BENE_COUNTY_CD BENE_ZIP_CD);
 run;
 
+/*pull hospice first enrollment start date from clean hospice claims dataset*/
 data work.hospice_startdate;
 	set ccw.unique (keep = bene_id start);
 	startyear = year(start);
 	startmonth = month(start);
 run;
 
+proc freq;
+table startyear /missprint;
+run;
+
+/*create single table of all mbs years + hospice start date + date of death
+multiple rows for each BID if they are present in multiple years of the MBS file*/
 proc sql;
 	create table mb_ab_fin1
 	as select *
@@ -125,6 +171,9 @@ proc sort data=mb_ab_fin1;
 	by bene_id BENE_ENROLLMT_REF_YR;
 run;
 
+/*keeps the mbs entry for the hospice start year only
+213516 observatons (4 BIDs in the hospice claims dataset do not have mbs entry same year
+as their hospice enrollment*/
 data mb_ab_fin2;
 	set mb_ab_fin1;
 	diff = BENE_ENROLLMT_REF_YR - startyear;
@@ -141,13 +190,20 @@ run;
 /*all people missing death year started in 2008 or 2009. They just didn't die*/
 /*missing 4 of the patients from hospice data: 213516*/
 
+/*****************************************************************************/
+/********************      MEDICARE/HMO STATUS        ************************/
+/*****************************************************************************/
 
-/******************** MEDICARE/HMO stuff ************************/
+/*Create indicators for (1) Parts A + B MC enrollment from time of
+hospice enrollment forward and (2) if MC is administered through an HMO */
+
 data medihmo;
 	merge Hospice_startdate dod_merge;
 	by bene_id;
 	if start ~= .;
 run;
+
+/*merge hs start dates and date of death with mbs file containing all years of data*/ 
 proc sql;
 	create table medihmo1
 	as select *
@@ -155,6 +211,8 @@ proc sql;
 	left join medihmo b
 	on a.bene_id = b.bene_id;
 quit;
+
+/*combine individual buyin and hmo indicator variables into single sting variable for each year*/
 data medihmo2;
 	set medihmo1;
 	deathyr = year(dod);
@@ -170,10 +228,8 @@ data medihmo2;
 	drop BENE_MDCR_ENTLMT_BUYIN_IND_01-BENE_MDCR_ENTLMT_BUYIN_IND_12 BENE_HMO_IND_01-BENE_HMO_IND_12;
 	label medi_status = "Medicare Entitlement/Buy-In Indicator";
 	label hmo_status = "HMO Indicator";
-	/*
 	lengthmedi = length (medi_status);
 	lengthmo = length(hmo_status);
-	*/
 	if dod = . then dod = '31DEC2010'd;
 	if deathyr = . then deathyr = year(dod);
 	if deathmonth = . then deathmonth = month(dod);
@@ -194,6 +250,10 @@ run;
 proc freq data=medihmo2;
 	table yeardiff;
 run;
+
+/*for those that died the same year as they enrolled in hospice, trim buyin and hmo
+indicator string variables to just months when the beneficiary was alive
+This is full mc and hmo status indicator variable for these beneficiaries*/
 data medihmo3_0;
 	set medihmo2;
 	if yeardiff = 0;
@@ -203,11 +263,13 @@ data medihmo3_0;
 	allhmostatus = substr(trim(left(hmo_status)), startmonth, mosdif);
 run;
 
+/*for beneficiaries that enrolled in hospice and died the next year*/
 data medihmo3_1_1;
 	set medihmo2;
 	if yeardiff = 1;
 	if BENE_ENROLLMT_REF_YR = startyear;
 	mosdif = (12 - startmonth)+1;
+	/*mc ind variables for month of hospice enrollment to end of that year*/
 	allmedistatus1 = substr(trim(left(medi_status)), startmonth, mosdif);
 	allhmostatus1 = substr(trim(left(hmo_status)), startmonth, mosdif);
 run;
@@ -215,11 +277,13 @@ data medihmo3_1_2;
 	set medihmo2;
 	if yeardiff = 1;
 	if BENE_ENROLLMT_REF_YR = deathyr;
+	/*mc ind variables for year after hs enrollment to death*/
 	allmedistatus2 = substr(trim(left(medi_status)), 1, deathmonth);
 	allhmostatus2 = substr(trim(left(hmo_status)), 1, deathmonth);
 run;
 proc sort data=medihmo3_1_1; by bene_id; run;
 proc sort data=medihmo3_1_2; by bene_id; run;
+/*bring in death year mc ind variables*/
 proc sql;
 	create table medihmo3_1
 	as select a.*, b.allmedistatus2, b.allhmostatus2
@@ -227,6 +291,7 @@ proc sql;
 	left join medihmo3_1_2 b
 	on a.bene_id = b.bene_id;
 quit;
+/*combine mc ind variables across the 2 years so single variable covers time from hs to death*/
 data medihmo3_1a;
 	set medihmo3_1;
 	allmedistatus = trim(left(allmedistatus1)) || trim(left(allmedistatus2));
@@ -248,6 +313,8 @@ run;
 */
 /*all months are accounted for*/
 
+/*similar to above steps, process mc ind variables for beneficiaries who die
+2 calendar years after hospice enrollment*/
 data medihmo3_2_0;
 	set medihmo2;
 	if yeardiff = 2;
@@ -270,6 +337,16 @@ data medihmo3_2_2;
 	allmedistatus3 = substr(trim(left(medi_status)), 1, deathmonth);
 	allhmostatus3 = substr(trim(left(hmo_status)), 1, deathmonth);
 run;
+
+proc freq data=medihmo3_2_2;
+table allmedistatus3 /missprint;
+run;
+
+data test4;
+set medihmo3_2_2;
+if allmedistatus3='';
+run;
+
 proc sort data=medihmo3_2_0; by bene_id; run;
 proc sort data=medihmo3_2_1; by bene_id; run;
 proc sort data=medihmo3_2_2; by bene_id; run;
@@ -291,9 +368,14 @@ data medihmo3_2b;
 	set medihmo3_2a;
 	allmedistatus = trim(left(allmedistatus1)) || trim(left(allmedistatus2)) || trim(left(allmedistatus3));
 	allhmostatus = trim(left(allhmostatus1)) || trim(left(allhmostatus2))|| trim(left(allhmostatus3));
-	drop allmedistatus1 allmedistatus2 allhmostatus1 allhmostatus2 allmedistatus3 allhmostatus3;
+	*drop allmedistatus1 allmedistatus2 allhmostatus1 allhmostatus2 allmedistatus3 allhmostatus3;
 run;
 
+proc freq data=medihmo3_2b;
+table startmonth deathmonth;
+run;
+
+/*check that months mc indicator variables match count of months from hospice enroll to death*/
 data test;
 	set medihmo3_2b;
 	retain totmonth;
@@ -309,13 +391,25 @@ data test1;
 	set test;
 	if diff > 0;
 run;
-/*five that are read wrong.*/
 
+/*these 5 bids don't have mbs files for all years*/
+proc sql;
+create table test5 as select * from medihmo2 where bene_id in (select bene_id from test1);
+quit;
+/*five that are read wrong.*/
+/*****************************************************************************/
+/*****************************************************************************/
+/*****************************************************************************/
+/*****************************************************************************/
+/*****************************************************************************/
+
+/*bring all beneficiaries into single dataset with their complete mc ind vars*/
 data medihmo3;
 	set medihmo3_2b medihmo3_1a medihmo3_0;
 run;
 proc sort data=medihmo3; by bene_id; run;
 
+/*create indicator variables for part a and b coverage and hmo coverage*/
 data medihmo4;
 	set medihmo3;
 	partab = 1;
