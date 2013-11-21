@@ -86,10 +86,10 @@ proc freq data=inpat;
 run;
 
 proc sort data=icu;
-	by bene_id ADMSN_DT;
+	by bene_id ADMSN_DT DSCHRG_DT;
 run;
 proc sort data=inpat;
-	by bene_id ADMSN_DT;
+	by bene_id ADMSN_DT DSCHRG_DT;
 run;
 data icu1;
 	set icu;
@@ -119,7 +119,40 @@ proc freq data=inpat;
 	table BENE_DSCHRG_STUS_CD;
 run;
 
+data inpat1a;
+        set inpat1;
+                by bene_id ADMSN_DT DSCHRG_DT;
+                daydiff = ADMSN_DT - lag(DSCHRG_DT);
+                if first.bene_id then daydiff = 999;
+run;
 
+/*merge costs, end dates for claims that are for cont. stays*/
+data inpat1b;
+        set inpat1a;
+                retain totalcost start end;
+                by bene_id ADMSN_DT;
+                        if daydiff > 1 or daydiff = 999 then do;
+                                start = ADMSN_DT;
+                                end = DSCHRG_DT;
+                                totalcost = MDCR_PMT_AMT;
+                                end;
+                        if daydiff <= 1 then do;
+                                totalcost = MDCR_PMT_AMT + totalcost;
+                                end = DSCHRG_DT;
+                                end;
+        format start date9. end date9.;
+run;
+data inpat1c;
+	set inpat1b;
+	retain i;
+	by bene_id;
+	if first.bene_id then i = 0;
+	i = i + 1;
+run;
+
+proc freq data=inpat1c;
+	table i;
+run;
 
 %macro icu;
         %do j = 1 %to 9;
