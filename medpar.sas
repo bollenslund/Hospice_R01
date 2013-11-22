@@ -1,5 +1,3 @@
-libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
-libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
 data medpar;
 	set merged.medpar_all_file;
@@ -17,7 +15,7 @@ run;
 
 proc sql;
 	create table medpar1
-	as select a.*, b.end
+	as select a.*, b.start, b.end
 	from medpar a
 	left join ccw.for_medpar b
 	on a.bene_id = b.bene_id;
@@ -30,7 +28,7 @@ run;
 
 data medpar2;
 	set medpar1;
-	if ADMSN_DT > end;
+	if ADMSN_DT > start;
 run;
 
 /*This field is derived by checking for the presence of icu 
@@ -72,145 +70,53 @@ prior to 12/96 update was 'post ICU'
 the term 'post ICU' as including any day after an ICU
 */
 
-data icu;
+data medpar3;
 	set medpar2;
-	if ICU_IND_CD ~= . and ICU_IND_CD ~= 0;
+	if ICU_IND_CD ~= . and ICU_IND_CD ~= 0 then ICU = 1;
+	if ICU_IND_CD = . or ICU_IND_CD = 0 then ICU = 0;
+	if SS_LS_SNF_IND_CD ~= 'N';
 run;
-data inpat;
+data SNF;
 	set medpar2;
-	if ICU_IND_CD = . or ICU_IND_CD = 0;
+	if SS_LS_SNF_IND_CD = 'N';
 run;
+/*no missing subjects (checked by proc freq)*/
 
-proc freq data=inpat;
-	table icu_ind_cd;
-run;
-
-proc sort data=icu;
+proc sort data=medpar3;
 	by bene_id ADMSN_DT DSCHRG_DT;
 run;
-proc sort data=inpat;
-	by bene_id ADMSN_DT DSCHRG_DT;
-run;
-data icu1;
-	set icu;
+
+data medpar4;
+	set medpar3;
 	retain i;
 	by bene_id;
 	if first.bene_id then i = 0;
 	i = i + 1;
-run;
-data inpat1;
-	set inpat;
-	retain i;
-	by bene_id;
-	if SS_LS_SNF_IND_CD = 'N' then delete;
-	if first.bene_id then i = 0;
-	i = i + 1;
-run;
-data death;
-	set inpat (keep = bene_id ADMSN_DT DSCHRG_DT BENE_DSCHRG_STUS_CD);
-	if BENE_DSCHRG_STUS_CD = 'B';
-	death = 1;
+	death = 0;
+	if BENE_DSCHRG_STUS_CD = 'B' then death = 1;
 run;
 
-proc freq data=test1;
-	table i;
-run;
-proc freq data=inpat;
-	table BENE_DSCHRG_STUS_CD;
-run;
-
-data inpat1a;
-        set inpat1;
-                by bene_id ADMSN_DT DSCHRG_DT;
-                daydiff = ADMSN_DT - lag(DSCHRG_DT);
-                if first.bene_id then daydiff = 999;
-run;
-
-/*merge costs, end dates for claims that are for cont. stays*/
-data inpat1b;
-        set inpat1a;
-                retain totalcost start end;
-                by bene_id ADMSN_DT;
-                        if daydiff > 1 or daydiff = 999 then do;
-                                start = ADMSN_DT;
-                                end = DSCHRG_DT;
-                                totalcost = MDCR_PMT_AMT;
-                                end;
-                        if daydiff <= 1 then do;
-                                totalcost = MDCR_PMT_AMT + totalcost;
-                                end = DSCHRG_DT;
-                                end;
-        format start date9. end date9.;
-run;
-data inpat1c;
-	set inpat1b;
-	retain i;
-	by bene_id;
-	if first.bene_id then i = 0;
-	i = i + 1;
-run;
-
-proc freq data=inpat1c;
+proc freq data=medpar4;
 	table i;
 run;
 
-%macro icu;
-        %do j = 1 %to 9;
-                data icu1_&j;
-                set icu1;
+%macro one;
+        %do j = 1 %to 39;
+                data medpar4_&j;
+                set medpar4;
                         if i = &j;
                 run;
-                data icu2_&j;
-                        set icu1_&j (keep = BENE_ID ADMSN_DT DSCHRG_DT);
+                data medpar4_2_&j;
+                        set medpar4_&j (keep = BENE_ID ADMSN_DT DSCHRG_DT MDCR_PMT_AMT DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD ICU death);
                 run;
                 proc datasets nolist;
-                        delete icu1_&j;
+                        delete medpar4_&j;
                 run;
-                data icu3_&j;
-                        set icu2_&j;
-                                icustart&j = ADMSN_DT;
-                                icuend&j = DSCHRG_DT;
-                                label icustart&j = "ICU Admission (Stay &j)";
-                                label icuend&j = "ICU Discharge (Stay &j)";
-                                format icuend&j date9. icustart&j date9.;
-                run;
-                proc datasets nolist;
-                        delete icu2_&j;
-                run;        
-                data icu4_&j;
-                        set icu3_&j (keep = BENE_ID icustart&j icuend&j);
-                run;
-                proc datasets nolist;
-                        delete icu3_&j;
-                run;
-                                         
-                %end;
-			%end;
-			data icu4;
-				merge icu4_1-icu4_9;
-				by bene_id;
-			run;
-			proc datasets;
-				delete icu4_1-icu4_9;
-			run;
-%mend;
-%icu;        
-%macro inpat;
-        %do j = 1 %to 37;
-                data inpat1_&j;
-                set inpat1;
-                        if i = &j;
-                run;
-                data inpat2_&j;
-                        set inpat1_&j (keep = BENE_ID ADMSN_DT DSCHRG_DT MDCR_PMT_AMT DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD);
-                run;
-                proc datasets nolist;
-                        delete inpat1_&j;
-                run;
-                data inpat3_&j;
-                        set inpat2_&j;
+                data medpar4_3_&j;
+                        set medpar4_2_&j;
                                 inpatstart&j = ADMSN_DT;
                                 inpatend&j = DSCHRG_DT;
+								icu&j = ICU;
 								cost&j = MDCR_PMT_AMT;
 								ICD9_1_&j = DGNS_1_CD;
 								ICD9_2_&j = DGNS_2_CD;
@@ -218,8 +124,10 @@ run;
 								ICD9_4_&j = DGNS_4_CD;
 								ICD9_5_&j = DGNS_5_CD;
 								ICD9_6_&j = DGNS_6_CD;
-                                label inpatstart&j = "ICU Admission (Stay &j)";
-                                label inpatend&j = "ICU Discharge (Stay &j)";
+								death&j = death;
+                                label inpatstart&j = "Admission (Stay &j)";
+                                label inpatend&j = "Discharge (Stay &j)";
+								label icu&j = "ICU? (1 = yes)";
 								label cost&j = "Cost during Inpatient Stay (Stay &j)";
 								label ICD9_1_&j = "ICD9 Primary Diagnosis (Stay &j)";
 								label ICD9_2_&j = "ICD9 Diagnosis Code 2 (Stay &j)";
@@ -227,30 +135,31 @@ run;
 								label ICD9_4_&j = "ICD9 Diagnosis Code 4 (Stay &j)";
 								label ICD9_5_&j = "ICD9 Diagnosis Code 5 (Stay &j)";
 								label ICD9_6_&j = "ICD9 Diagnosis Code 6 (Stay &j)";
+								label death&j = "Death during stay?";
                                 format inpatstart&j date9. inpatend&j date9.;
                 run;
                 proc datasets nolist;
-                        delete inpat2_&j;
+                        delete medpar4_2_&j;
                 run;        
-                data inpat4_&j;
-                        set inpat3_&j (keep = BENE_ID inpatstart&j inpatend&j cost&j ICD9_1_&j ICD9_2_&j ICD9_3_&j ICD9_4_&j ICD9_5_&j ICD9_6_&j);
+                data medpar4_4_&j;
+                        set medpar4_3_&j (keep = BENE_ID inpatstart&j inpatend&j icu&j cost&j ICD9_1_&j ICD9_2_&j ICD9_3_&j ICD9_4_&j ICD9_5_&j ICD9_6_&j death&j);
                 run;
                 proc datasets nolist;
-                        delete inpat3_&j;
+                        delete medpar4_3_&j;
                 run;
                                          
                 %end;
 			%end;
-			data inpat4;
-				merge inpat4_1-inpat4_37;
+			data medpar5;
+				merge medpar4_4_1-medpar4_4_39;
 				by bene_id;
 			run;
 			proc datasets nolist;
-				delete inpat4_1-inpat4_37;
+				delete medpar4_4_1-medpar4_4_39;
 			run;
 			quit;
 %mend;
-%inpat;        
+%one;        
 
 proc sql;
 	create table inpat5

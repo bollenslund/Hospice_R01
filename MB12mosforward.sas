@@ -440,7 +440,7 @@ run;
 
 proc sql;
 	create table formedpar
-	as select a.*, b.end
+	as select a.*, b.start, b.end
 	from medihmo5 a
 	left join ccw.unique b
 	on a.bene_id = b.bene_id;
