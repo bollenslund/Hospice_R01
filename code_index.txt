@@ -20,4 +20,9 @@ Collects diagnosis codes from all claims 12 months before the first hopsice
 enrollment, then creates indicator variables for each of the chronic conditions
 
 
+MB12mosforward.sas:
+Processes the master beneficiary summary files to get date of death, demographics and
+location.
+Determines sample elgibility using medicare parts a and b coverage and hmo status
+
 

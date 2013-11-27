@@ -24,7 +24,7 @@ data test;
 	if bene_id = 'ZZZZZZZp339I3kp';
 run;
 data test3;
-	set Hospice_startdate;
+	set ccw.hs_stays_cleaned;
 	if bene_id = 'ZZZZZZZp339I3kp';
 run;
 
@@ -63,7 +63,7 @@ data test;
 	if BENE_DEATH_DT = .;
 run;
 
-/*all but 17 of 16399 of the observations are in 2010*/
+/*all but 11 of 16399 of the observations are in 2010*/
 proc freq data=test;
 	table BENE_ENROLLMT_REF_YR;
 run;
@@ -85,6 +85,8 @@ data test2;
 run;
 /*there are around 3% of people who have different from NDI of the 36000
 people who have reported NDI. Use the regular date of death?*/
+
+/*bring date of death, date death indicator and valid death date key in to dataset*/
 data dod_merge;
 	set dod2 (keep = bene_id BENE_DEATH_DT death_i BENE_VALID_DEATH_DT_SW);
 	dod = BENE_DEATH_DT;
@@ -94,8 +96,10 @@ data dod_merge;
 run;
 proc sort data=dod_merge; by bene_id; run;
 
+/*approximately 2000 observations with death date do not have the valid death date
+switch indicator in the master beneficiary file for their last year in the dataset*/
 proc freq;
-table BENE_VALID_DEATH_DT_SW;
+table BENE_VALID_DEATH_DT_SW /missprint;
 run;
 /*Unique beneficiaries in MBS file: 219153. 
 In hospice claims, we have 213520 beneficiaries
@@ -187,7 +191,8 @@ run;
 proc freq data=test3;
 	table startyear;
 run;
-/*all people missing death year started in 2008 or 2009. They just didn't die*/
+/*all people missing death year started in 2008 or 2009. They just didn't die
+by 2010 when the dataset ends*/
 /*missing 4 of the patients from hospice data: 213516*/
 
 /*****************************************************************************/
@@ -195,7 +200,8 @@ run;
 /*****************************************************************************/
 
 /*Create indicators for (1) Parts A + B MC enrollment from time of
-hospice enrollment forward and (2) if MC is administered through an HMO */
+hospice enrollment forward (to end of 2010 or death) and (2) if MC 
+is administered through an HMO */
 
 data medihmo;
 	merge Hospice_startdate dod_merge;
@@ -207,12 +213,14 @@ run;
 proc sql;
 	create table medihmo1
 	as select *
-	from mb_ab a
+	from mb_ab(drop=BENE_VALID_DEATH_DT_SW) a
 	left join medihmo b
 	on a.bene_id = b.bene_id;
 quit;
 
-/*combine individual buyin and hmo indicator variables into single sting variable for each year*/
+/*combine individual buyin and hmo indicator variables into single string variable for 
+each year. If no date of death, then set dod=Dec. 31, 2010 so we check for coverage
+through end of 2010*/
 data medihmo2;
 	set medihmo1;
 	deathyr = year(dod);
@@ -236,6 +244,42 @@ data medihmo2;
 	if start = . then delete;
 	yeardiff = deathyr - startyear;
 run;
+
+/*******************************************************************************/
+/*******************************************************************************/
+/*******************************************************************************/
+/*******************************************************************************/
+/*******************************************************************************/
+
+data test20;
+set medihmo2;
+enr_to_dth=dod - start;
+run;
+
+proc sort data=test20;
+by bene_id BENE_ENROLLMT_REF_YR;
+run;
+
+data test21;
+set test20;
+	by bene_id BENE_ENROLLMT_REF_YR;
+	if last.bene_id;
+run;
+/*12 beneficiaries have date of death earlier than hospice enrollment date*/
+proc freq data=test21;
+table enr_to_dth /missprint;
+run;
+
+data test22;
+set test21;
+if enr_to_dth < 0;
+run;
+/*******************************************************************************/
+/*******************************************************************************/
+/*******************************************************************************/
+/*******************************************************************************/
+/*******************************************************************************/
+
 /*data test;
 	set medihmo;
 	by bene_id;
@@ -250,9 +294,10 @@ run;
 proc freq data=medihmo2;
 	table yeardiff;
 run;
+/*table of difference between death year and hospice enrollment year, all 0-2*/
 
 /*for those that died the same year as they enrolled in hospice, trim buyin and hmo
-indicator string variables to just months when the beneficiary was alive
+indicator string variables to just month of hospice enrollment to death month
 This is full mc and hmo status indicator variable for these beneficiaries*/
 data medihmo3_0;
 	set medihmo2;
@@ -261,6 +306,11 @@ data medihmo3_0;
 	mosdif = (deathmonth - startmonth)+1;
 	allmedistatus = substr(trim(left(medi_status)), startmonth, mosdif);
 	allhmostatus = substr(trim(left(hmo_status)), startmonth, mosdif);
+run;
+
+/*2 observations have death date earlier than hospice enrollment date*/
+proc freq data=medihmo3_0;
+table mosdif;
 run;
 
 /*for beneficiaries that enrolled in hospice and died the next year*/
@@ -420,7 +470,7 @@ data medihmo4;
 	if BENE_AGE_AT_END_REF_YR <= 65 then age = 0;
 run;
 
-ods rtf body="C:\Users\leee20\Desktop\GitHub\Hospice_R01\results.rtf";
+ods rtf body="J:\Geriatrics\Geri\Hospice Project\output\results.rtf";
 title "Frequency Tables";
 proc freq data=medihmo4;
 table BENE_HMO_CVRAGE_TOT_MONS;
