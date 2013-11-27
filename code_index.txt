@@ -23,6 +23,9 @@ enrollment, then creates indicator variables for each of the chronic conditions
 MB12mosforward.sas:
 Processes the master beneficiary summary files to get date of death, demographics and
 location.
-Determines sample elgibility using medicare parts a and b coverage and hmo status
+Determines sample elgibility using medicare parts a and b coverage, hmo status,
+and age (age < 64 at end of hospice enrollment year per mbsf)
+
+
 
 
