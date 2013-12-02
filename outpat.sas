@@ -13,9 +13,14 @@ proc freq data=revenue;
 	table REV_CNTR;
 run;
 proc freq data=base;
-	table CLM_OP_SRVC_TYPE_TB ;
+	table CLM_SRVC_CLSFCTN_TYPE_CD /missprint;
 run;
 
+/**************************************************************************/
+/* Identify emergency department use */
+/**************************************************************************/
+
+/*keep only revenue center codes for ED use*/
 data ed;
 	set revenue;
 	if REV_CNTR >= 450 and REV_CNTR < 460;
@@ -23,6 +28,7 @@ run;
 proc sort data=ed;
 	by bene_id clm_id clm_thru_dt;
 run;
+/*creates total cost of ed use across all ed rev. codes by claim id*/
 data ed1;
 	set ed;
 	retain cost i;
@@ -33,15 +39,18 @@ data ed1;
 run;
 
 proc freq data=ed1;
-	table i;
+	table i REV_CNTR;
 run;
 
+/*just keep last ed entry per claim id to get total cost
+331828 claims*/
 data ed2;
 	set ed1;
 	by bene_id clm_id;
 	if last.clm_id;
 run;
 
+/*bring in ed cost to base op claims dataset*/
 proc sql;
 	create table base_ed
 	as select a.*, b.cost
@@ -51,6 +60,8 @@ proc sql;
 	and a.CLM_THRU_DT = b.CLM_THRU_DT;
 quit;
 
+/*only keep claims with ed cost
+331828 claims*/
 data base_ed1;
 	set base_ed;
 	if cost = . then delete;
@@ -63,6 +74,18 @@ proc sort data=base_ed1;
 	by bene_id;
 run;
 
+/*check of length of stay for these outpatient ed claims*/
+data testop_1;
+set base_ed1;
+los=end-start+1;
+run;
+
+proc freq;
+table los /missprint;
+run;
+
+/*create count variable for number of claims per bene id
+max is 198*/
 data test;
 	set base_ed1;
 	by bene_id;
@@ -74,33 +97,34 @@ proc freq data=test;
 	table i;
 run;
 
+/*transpose start dates so get start1, start2... start198 variables*/
 proc transpose data = base_ed1 prefix = start out=start_dates;
 	by bene_id;
 	var start;
 run;
-
+/*transpose end dates*/
 proc transpose data= base_ed1 prefix = end out=end_dates;
 	by bene_id;
 	var end;
-	label 
 run;
-
+/*transpose costs*/
 proc transpose data= base_ed1 prefix = cost out=cost;
 	by bene_id;
 	var cost;
 run;
-
+/*transpose principle diagnosis*/
 proc transpose data= base_ed1 prefix = prim_icd out=icd;
 	by bene_id;
 	var PRNCPAL_DGNS_CD;
 run;
-
+/*bring start, end, costs and principle dx together into single dataset*/
 data base_ed2;
 	merge start_dates end_dates cost icd;
 	by bene_id;
-	drop _NAME_;
+	drop _NAME_ _LABEL_;
 run;
 
+/*re-sort variables so claim #1 variables all together, etc.*/
 %macro resort;
 	%do i = 1 %to 199;
 		data resort&i;
@@ -117,6 +141,7 @@ run;
 %mend;
 %resort;
 
+/*save outpatient claims dataset to the working folder*/
 data ccw.outpat;
 	set base_ed3;
 run;
