@@ -1,3 +1,19 @@
+/*
+This file processes the inpatient and SNF claims from the medpar claims dataset
+For inpatient claims, get:
+    Start, end dates
+    ICU and or ED use indicator
+        ICU use comes from indicator in medpar dataset, ED use comes from
+        whether or not there are ED charges associated with that claim
+        (if charges>0, then ED=1)
+    Costs/claim
+    Hospital death
+    Diagnosis codes (primary + next 5)
+For SNF claims, get
+    Start,end dates
+    Costs/claim
+*/
+
 libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
@@ -42,7 +58,7 @@ data medpar2;
 run;
 
 /*************************************************************************/
-/*    Identify ICU inpatient claims                                      */
+/*    Identify ICU and ED use in inpatient claims                        */
 /*************************************************************************/
 
 /*Uses medpar variable ICUINDCD :
@@ -81,7 +97,11 @@ proc freq data=medpar2;
 table ICU_IND_CD /missprint;
 run;
 
-/*create indicator for ICU use during stay*/
+/*create indicator for ICU and/or ED use during stay
+ICUED=0 - no icu or ed use
+=1 ED only
+=2 ICU only
+=3 ICU and ED*/
 data medpar3;
 	set medpar2;
 	if ICU_IND_CD ~= . and ICU_IND_CD ~= 0 then ICU = 1;
@@ -96,10 +116,12 @@ data medpar3;
 	drop icu ed;
 run;
 
-
-/*~15% of claims have ICU use*/
 proc freq;
-table ICU /missprint;
+table ICUED /missprint;
+run;
+
+proc freq
+table ICUED*SRC_IP_ADMSN_CD;
 run;
 
 /*create dataset of SNF claims*/
