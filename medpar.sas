@@ -87,7 +87,15 @@ data medpar3;
 	if ICU_IND_CD ~= . and ICU_IND_CD ~= 0 then ICU = 1;
 	if ICU_IND_CD = . or ICU_IND_CD = 0 then ICU = 0;
 	if SS_LS_SNF_IND_CD ~= 'N';
+	ED = 0;
+	if ER_CHRG_AMT > 0 then ED = 1;
+	if ICU = 1 and ED = 1 then ICUED = 3;
+	if ICU = 1 and ED = 0 then ICUED = 2;
+	if ICU = 0 and ED = 1 then ICUED = 1;
+	if ICU = 0 and ED = 0 then ICUED = 0;
+	drop icu ed;
 run;
+
 
 /*~15% of claims have ICU use*/
 proc freq;
@@ -100,6 +108,17 @@ data SNF;
 	if SS_LS_SNF_IND_CD = 'N';
 run;
 /*no missing subjects (checked by proc freq)*/
+
+data ed;
+	set medpar2;
+	if ER_CHRG_AMT > 0;
+run;
+
+data src;
+	set medpar2;
+	if SRC_IP_ADMSN_CD = '7';
+run;
+
 
 /*************************************************************************/
 /*    Process inpatient claims                                           */
@@ -139,9 +158,7 @@ resulting dataset is work.medpar5*/
                         if i = &j;
                 run;
                 data medpar4_2_&j;
-                        set medpar4_&j (keep = BENE_ID ADMSN_DT DSCHRG_DT MDCR_PMT_AMT 
-                        DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD ICU 
-                        death DSCHRG_DSTNTN_CD);
+                        set medpar4_&j (keep = BENE_ID ADMSN_DT DSCHRG_DT MDCR_PMT_AMT DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD ICUED death);
                 run;
                 proc datasets nolist;
                         delete medpar4_&j;
@@ -150,7 +167,7 @@ resulting dataset is work.medpar5*/
                         set medpar4_2_&j;
                                 inpatstart&j = ADMSN_DT;
                                 inpatend&j = DSCHRG_DT;
-								icu&j = ICU;
+								icued&j = ICUED;
 								cost&j = MDCR_PMT_AMT;
 								ICD9_1_&j = DGNS_1_CD;
 								ICD9_2_&j = DGNS_2_CD;
@@ -159,10 +176,9 @@ resulting dataset is work.medpar5*/
 								ICD9_5_&j = DGNS_5_CD;
 								ICD9_6_&j = DGNS_6_CD;
 								death&j = death;
-                                                                disch_dstn_cd_&j = DSCHRG_DSTNTN_CD;
                                 label inpatstart&j = "Admission (Stay &j)";
                                 label inpatend&j = "Discharge (Stay &j)";
-								label icu&j = "ICU? (1 = yes)";
+								label icued&j = "ICU/ED/Both? (0 = Neither, 1 = ED only, 2 = ICU only, 3 = Both)";
 								label cost&j = "Cost during Inpatient Stay (Stay &j)";
 								label ICD9_1_&j = "ICD9 Primary Diagnosis (Stay &j)";
 								label ICD9_2_&j = "ICD9 Diagnosis Code 2 (Stay &j)";
@@ -171,15 +187,13 @@ resulting dataset is work.medpar5*/
 								label ICD9_5_&j = "ICD9 Diagnosis Code 5 (Stay &j)";
 								label ICD9_6_&j = "ICD9 Diagnosis Code 6 (Stay &j)";
 								label death&j = "Death during stay?";
-								label disch_dstn_cd_&j = "Discharge destn code (Stay &j)";
                                 format inpatstart&j date9. inpatend&j date9.;
                 run;
                 proc datasets nolist;
                         delete medpar4_2_&j;
                 run;        
                 data medpar4_4_&j;
-                        set medpar4_3_&j (keep = BENE_ID inpatstart&j inpatend&j icu&j cost&j ICD9_1_&j ICD9_2_&j 
-                        ICD9_3_&j ICD9_4_&j ICD9_5_&j ICD9_6_&j death&j disch_dstn_cd_&j);
+                        set medpar4_3_&j (keep = BENE_ID inpatstart&j inpatend&j icued&j cost&j ICD9_1_&j ICD9_2_&j ICD9_3_&j ICD9_4_&j ICD9_5_&j ICD9_6_&j death&j);
                 run;
                 proc datasets nolist;
                         delete medpar4_3_&j;
@@ -197,6 +211,7 @@ resulting dataset is work.medpar5*/
 			quit;
 %mend;
 %one;        
+  
 
 /*check that stay 2 admit day is later than stay 1 end date
 For 487 beneficiaries, this is not the case
