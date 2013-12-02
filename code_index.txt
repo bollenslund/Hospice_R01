@@ -26,6 +26,14 @@ location.
 Determines sample elgibility using medicare parts a and b coverage, hmo status,
 and age (age < 64 at end of hospice enrollment year per mbsf)
 
+medpar.sas:
+Process medpar claims to get two claims datasets:
+1. Inpatient claims which has start/end dates, costs for each inpatient claim
+   Also contains indicator for hospital death and ICU use for each IP claim
+2. SNF claims with start/end dates and costs for each SNF stay
+
+
+
 
 
 
