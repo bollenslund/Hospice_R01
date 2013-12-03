@@ -1,7 +1,9 @@
 libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
-
+data hospice;
+	set ccw.unique;
+run;
 data base;
 	set merged.outpatient_base_claims_j;
 run;
@@ -19,6 +21,40 @@ run;
 /**************************************************************************/
 /* Identify emergency department use */
 /**************************************************************************/
+
+data hospice1;
+	set hospice (keep = bene_id start end start2-start21 end2-end21);
+run;
+
+proc sql;
+	create table base1
+	as select *
+	from base a
+	left join hospice1 b
+	on a.bene_id = b.bene_id;
+quit;
+
+data base2;
+	set base1;
+	if CLM_FROM_DT < start then delete;
+	if start = . then delete;
+run;
+
+proc sort data=revenue;
+	by bene_id clm_id REV_CNTR;
+run;
+
+data revenue1;
+	set revenue;
+	by bene_id clm_id;
+	if first.clm_id;
+run;
+
+proc freq data=revenue1;
+	table REV_CNTR;
+run;
+/*all total values*/
+
 
 /*keep only revenue center codes for ED use*/
 data ed;
@@ -54,24 +90,39 @@ run;
 proc sql;
 	create table base_ed
 	as select a.*, b.cost
-	from base a
+	from base2 a
 	left join ed2 b
 	on a.clm_id = b.clm_id
 	and a.CLM_THRU_DT = b.CLM_THRU_DT;
 quit;
 
+proc sort data=base_ed;
+	by bene_id CLM_FROM_DT;
+run;
+
+proc sql;
+	create table base_ed_1
+	as select a.*, b.REV_CNTR_TOT_CHRG_AMT
+	from base_ed a
+	left join revenue1 b
+	on a.clm_id = b.clm_id
+	and a.CLM_THRU_DT = b.CLM_THRU_DT;
+quit;
+proc sort data=base_ed_1;
+	by bene_id CLM_FROM_DT;
+run;
+
 /*only keep claims with ed cost
 331828 claims*/
 data base_ed1;
-	set base_ed;
-	if cost = . then delete;
+	set base_ed_1;
 	start = CLM_FROM_DT;
 	end = CLM_THRU_DT;
 	format start date9. end date9.;
 run;
 
 proc sort data=base_ed1;
-	by bene_id;
+	by bene_id CLM_FROM_DT;
 run;
 
 /*check of length of stay for these outpatient ed claims*/
