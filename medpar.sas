@@ -288,6 +288,88 @@ run;
 /*    Process skilled nursing facility (SNF) claims                      */
 /*************************************************************************/
 
+data snf1;
+	set snf (keep = bene_id MEDPAR_ID BENE_DSCHRG_STUS_CD ADMSN_DT DSCHRG_DT DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD);
+	death = 0;
+	if BENE_DSCHRG_STUS_CD = 'B' then death = 1;
+	drop BENE_DSCHRG_STUS_CD;
+run;	
+
+proc sort data = snf1;
+	by bene_id admsn_dt;
+run;
+/*blank discharge dates?*/
+
+data snf2;
+	set snf1;
+	by bene_id;
+	retain i;
+	i = i + 1;
+	if first.bene_id then i = 1;
+run;
+
+proc freq data=snf2;
+	table i;
+run;
+/*maximum of 12 admissions to the SNF*/
+
+proc transpose data=snf2 prefix=start out=start_dates_snf;
+by bene_id;
+var admsn_dt;
+run;
+proc transpose data=snf2 prefix=end out = end_dates_snf;
+by bene_id;
+var dschrg_dt;
+run;
+proc transpose data=snf2 prefix=prim_icd out = prim_icd_snf;
+by bene_id;
+var dgns_1_cd;
+run;
+proc transpose data = snf2 prefix = icd2_ out = sec_icd_snf;
+by bene_id;
+var dgns_2_cd;
+run;
+proc transpose data=snf2 prefix = icd3_ out = third_icd_snf;
+by bene_id;
+var dgns_3_cd;
+run;
+proc transpose data=snf2 prefix = icd4_ out = four_icd_snf;
+by bene_id;
+var dgns_4_cd;
+run;
+proc transpose data=snf2 prefix = icd5_ out = five_icd_snf;
+by bene_id;
+var dgns_5_cd;
+run;
+proc transpose data=snf2 prefix = icd6_ out = six_icd_snf;
+by bene_id;
+var dgns_6_cd;
+run;
+
+data snf3;
+	merge start_dates_snf end_dates_snf prim_icd_snf sec_icd_snf third_icd_snf four_icd_snf five_icd_snf six_icd_snf;
+	by bene_id;
+	drop _NAME_ _LABEL_;
+run;
+
+%macro resort;
+	%do i = 1 %to 12;
+		data resort&i;
+			set snf3 (keep = bene_id start&i end&i prim_icd&i icd2_&i icd4_&i icd5_&i icd6_&i);
+		run;
+	%end;
+	data snf4;
+		merge resort1-resort12;
+		by bene_id;
+	run;
+	proc datasets nolist;
+		delete resort1-resort12;
+	run;
+	quit;
+%mend;
+%resort;
+
+
 /*************************************************************************/
 /*create additional variables for use in data analysis*/
 /*************************************************************************/

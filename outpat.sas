@@ -29,6 +29,15 @@ proc freq data=base;
 	table CLM_SRVC_CLSFCTN_TYPE_CD /missprint;
 run;
 
+data test;
+	set revenue;
+	if clm_id = 'ZZZZZZ4Zy4y9p33';
+run;
+data test1;
+	set base;
+	if clm_id = 'ZZZZZZ4Zy4y9p33';
+run;
+
 /*drop beneficiary ids that aren't in sample as defined in 
 master beneficiary summary file processing (age, ins status, hs stay)*/
 proc sql;
@@ -36,8 +45,8 @@ create table base0 as select * from base
 where bene_id in (select bene_id from ccw.for_medpar);
 quit;
 proc sql;
-create table revenue0 as select * from revenue
-where bene_id in (select bene_id from ccw.for_medpar);
+create table revenue0 as select BENE_ID,CLM_ID,REV_CNTR from revenue
+where bene_id in (select bene_id from ccw.for_medpar) ;
 quit;
 
 data hospice1;
