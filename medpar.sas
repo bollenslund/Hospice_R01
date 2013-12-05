@@ -44,7 +44,9 @@ proc sql;
 	on a.bene_id = b.bene_id;
 quit;
 
-/*drop medpar claims for beneficiaries with no hospice stay 1 end date*/
+/*drop medpar claims for beneficiaries with no hospice stay 1 end date
+Note: this also limits to the sample defined in the MBS file processing
+to those 65 and older with parts a + b coverage and no hmo coverage*/
 data medpar1;
 	set medpar1;
 	if end = . then delete;
@@ -104,8 +106,8 @@ ICUED=0 - no icu or ed use
 =3 ICU and ED*/
 data medpar3;
 	set medpar2;
-	if ICU_IND_CD ~= . and ICU_IND_CD ~= 0 then ICU = 1;
-	if ICU_IND_CD = . or ICU_IND_CD = 0 then ICU = 0;
+	if ICU_IND_CD ~= . or INTNSV_CARE_DAY_CNT>0 then ICU = 1;
+	if ICU_IND_CD = . and INTNSV_CARE_DAY_CNT=0 then ICU = 0;
 	if SS_LS_SNF_IND_CD ~= 'N';
 	ED = 0;
 	if ER_CHRG_AMT > 0 then ED = 1;
@@ -116,13 +118,40 @@ data medpar3;
 	drop icu ed;
 run;
 
+proc freq data=medpar3;
+table INTNSV_CARE_DAY_CNT* ICU_IND_CD /missprint;
+run;
+
 proc freq;
 table ICUED /missprint;
 run;
 
-proc freq
+proc freq;
 table ICUED*SRC_IP_ADMSN_CD;
 run;
+
+/*check of icu los - it is not the same as the overall los
+many observations have days within ip stay that are not icu days*/
+data icu_check_1;
+set medpar3;
+if ICUED=2 or ICUED=3;
+run;
+
+data icu_check_2;
+set icu_check_1;
+mp_los_calc=DSCHRG_DT-ADMSN_DT;
+mp_los_dif=LOS_DAY_CNT-mp_los_calc;
+mp_ip_los_dif=INTNSV_CARE_DAY_CNT-mp_los_calc;
+run;
+
+proc freq;
+table mp_los_calc LOS_DAY_CNT mp_los_dif mp_ip_los_dif;
+run;
+
+proc freq;
+table INTNSV_CARE_DAY_CNT* ICUED /missprint;
+run;
+
 
 /*create dataset of SNF claims*/
 data SNF;
@@ -180,47 +209,49 @@ resulting dataset is work.medpar5*/
                         if i = &j;
                 run;
                 data medpar4_2_&j;
-                        set medpar4_&j (keep = BENE_ID ADMSN_DT DSCHRG_DT MDCR_PMT_AMT DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD ICUED death);
+                        set medpar4_&j (keep = BENE_ID ADMSN_DT DSCHRG_DT MDCR_PMT_AMT DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD ICUED INTNSV_CARE_DAY_CNT death);
                 run;
                 proc datasets nolist;
                         delete medpar4_&j;
                 run;
                 data medpar4_3_&j;
                         set medpar4_2_&j;
-                                inpatstart&j = ADMSN_DT;
-                                inpatend&j = DSCHRG_DT;
-								icued&j = ICUED;
-								cost&j = MDCR_PMT_AMT;
-								ICD9_1_&j = DGNS_1_CD;
-								ICD9_2_&j = DGNS_2_CD;
-								ICD9_3_&j = DGNS_3_CD;
-								ICD9_4_&j = DGNS_4_CD;
-								ICD9_5_&j = DGNS_5_CD;
-								ICD9_6_&j = DGNS_6_CD;
-								death&j = death;
-                                label inpatstart&j = "Admission (Stay &j)";
-                                label inpatend&j = "Discharge (Stay &j)";
-								label icued&j = "ICU/ED/Both? (0 = Neither, 1 = ED only, 2 = ICU only, 3 = Both)";
-								label cost&j = "Cost during Inpatient Stay (Stay &j)";
-								label ICD9_1_&j = "ICD9 Primary Diagnosis (Stay &j)";
-								label ICD9_2_&j = "ICD9 Diagnosis Code 2 (Stay &j)";
-								label ICD9_3_&j = "ICD9 Diagnosis Code 3 (Stay &j)";
-								label ICD9_4_&j = "ICD9 Diagnosis Code 4 (Stay &j)";
-								label ICD9_5_&j = "ICD9 Diagnosis Code 5 (Stay &j)";
-								label ICD9_6_&j = "ICD9 Diagnosis Code 6 (Stay &j)";
-								label death&j = "Death during stay?";
-                                format inpatstart&j date9. inpatend&j date9.;
+                                IP_start&j = ADMSN_DT;
+                                IP_end&j = DSCHRG_DT;
+								IP_icued&j = ICUED;
+								IP_icu_day_cnt&j = INTNSV_CARE_DAY_CNT;
+								IP_cost&j = MDCR_PMT_AMT;
+								IP_ICD9_1_&j = DGNS_1_CD;
+								IP_ICD9_2_&j = DGNS_2_CD;
+								IP_ICD9_3_&j = DGNS_3_CD;
+								IP_ICD9_4_&j = DGNS_4_CD;
+								IP_ICD9_5_&j = DGNS_5_CD;
+								IP_ICD9_6_&j = DGNS_6_CD;
+								IP_death&j = death;
+                                label IP_start&j = "Admission (Stay &j)";
+                                label IP_end&j = "Discharge (Stay &j)";
+								label IP_icued&j = "ICU/ED/Both? (0 = Neither, 1 = ED only, 2 = ICU only, 3 = Both)";
+								label IP_icu_day_cnt&j = "ICU day count (Stay &j)";
+                                                                label IP_cost&j = "Cost during Inpatient Stay (Stay &j)";
+								label IP_ICD9_1_&j = "ICD9 Primary Diagnosis (Stay &j)";
+								label IP_ICD9_2_&j = "ICD9 Diagnosis Code 2 (Stay &j)";
+								label IP_ICD9_3_&j = "ICD9 Diagnosis Code 3 (Stay &j)";
+								label IP_ICD9_4_&j = "ICD9 Diagnosis Code 4 (Stay &j)";
+								label IP_ICD9_5_&j = "ICD9 Diagnosis Code 5 (Stay &j)";
+								label IP_ICD9_6_&j = "ICD9 Diagnosis Code 6 (Stay &j)";
+								label IP_death&j = "Death during stay?";
+                                format IP_start&j date9. IP_end&j date9.;
                 run;
                 proc datasets nolist;
                         delete medpar4_2_&j;
-                run;        
+                run;
                 data medpar4_4_&j;
-                        set medpar4_3_&j (keep = BENE_ID inpatstart&j inpatend&j icued&j cost&j ICD9_1_&j ICD9_2_&j ICD9_3_&j ICD9_4_&j ICD9_5_&j ICD9_6_&j death&j);
+                        set medpar4_3_&j (keep = BENE_ID IP_start&j IP_end&j IP_icued&j IP_icu_day_cnt&j IP_cost&j IP_ICD9_1_&j IP_ICD9_2_&j IP_ICD9_3_&j IP_ICD9_4_&j IP_ICD9_5_&j IP_ICD9_6_&j IP_death&j);
                 run;
                 proc datasets nolist;
                         delete medpar4_3_&j;
                 run;
-                                         
+
                 %end;
 			%end;
 			data medpar5;
@@ -240,18 +271,13 @@ For 487 beneficiaries, this is not the case
 deal with this later when looking at full patient timelines*/
 data test1;
 set medpar5;
-days_1_2=inpatstart2-inpatend1;
+days_1_2=IP_start2-IP_end1;
 run;
 proc freq;
 table days_1_2;
 run;
-data test2;
-set test1;
-if days_1_2<1 and days_1_2~=.;
-run;
-proc freq;
-table disch_dstn_cd_1;
-run;
+
+
 
 /*save dataset of ip claims to working folder*/
 data ccw.ip_claims_clean;
@@ -261,3 +287,103 @@ run;
 /*************************************************************************/
 /*    Process skilled nursing facility (SNF) claims                      */
 /*************************************************************************/
+
+/*************************************************************************/
+/*create additional variables for use in data analysis*/
+/*************************************************************************/
+
+/*merge ip claims dataset with medpar dataset to get full list of hs sample*/
+proc sql;
+create table ip_sample as select * from
+ccw.for_medpar a
+left join ccw.ip_claims_clean b
+on a.bene_id=b.bene_id;
+quit;
+
+/*create / initialize variables*/
+data ip_sample_1;
+set ip_sample;
+/*hospital ip admission variables*/
+hosp_adm_ind=0;                          /*hosp admission indicator*/
+if IP_start1~=. then hosp_adm_ind=1;
+hosp_adm_days=0;                         /*hospital admission count days*/
+hosp_adm_cnt=0;
+/*ed visit variables*/
+ip_ed_visit_ind=0;                      /*ed visit indicator*/
+ip_ed_visit_cnt=0;                      /*number of ed visits*/
+/*icu stay variables*/
+icu_stay_ind=0;                         /*icu stay indicator*/
+icu_stay_days=0;                        /*icu count days*/
+icu_stay_cnt=0;                         /*icu stay count*/
+/*hospital death variable*/
+hosp_death=0;
+/*cost variable*/
+ip_tot_cost=0;
+label hosp_adm_ind="Hospital admission indicator";
+label hosp_adm_days="Hospital stays total day count";
+label hosp_adm_cnt="Count of hospital admissions";
+label ip_ed_visit_ind="ED Visit indicator (from IP claims)";
+label ip_ed_visit_cnt="ED Visit count (from IP claims)";
+label icu_stay_ind="ICU Stay indicator";
+label icu_stay_days="ICU stays total day count";
+label icu_stay_cnt="Count of ICU stays";
+label hosp_death="Hospital death (from IP claims)";
+label ip_tot_cost="Total cost all IP claims";
+run;
+
+/*macro to run through all ip stays to get count variables*/
+%macro ip_vars;
+data ip_sample_2;
+set ip_sample_1;                          /*hospital admissions count*/
+if hosp_adm_ind=1 then do;
+   hosp_adm_days=IP_end1-IP_start1 + 1; /*initialize for 1st stay*/
+   hosp_adm_cnt=1;
+   if IP_icued1=1 or IP_icued1=3 then ip_ed_visit_cnt=1;
+   if IP_icued1=2 or IP_icued1=3 then do;
+      icu_stay_cnt=1;
+      icu_stay_days = IP_icu_day_cnt1;
+      end;
+   if IP_death1=1 then hosp_death=1;
+   ip_tot_cost=IP_cost1;
+   %do i=2 %to 39;
+         if IP_start&i~=. then hosp_adm_days=hosp_adm_days + (IP_end&i-IP_start&i) + 1;
+         if IP_start&i~=. then hosp_adm_cnt=hosp_adm_cnt+1;
+         if (IP_icued&i=1 or IP_icued&i=3) then ip_ed_visit_cnt=ip_ed_visit_cnt+1;
+         if (IP_icued&i=2 or IP_icued&i=3) then icu_stay_days = icu_stay_days + IP_icu_day_cnt&i;
+         if (IP_icued&i=2 or IP_icued&i=3) then icu_stay_cnt+1;
+         if IP_death&i=1 then hosp_death=1;
+         if IP_cost&i~=. then ip_tot_cost=ip_tot_cost + IP_cost&i;
+         %end;
+   end;
+run;
+
+data ip_sample_3;
+set ip_sample_2;
+if ip_ed_visit_cnt>0 then ip_ed_visit_ind=1;
+if icu_stay_cnt>0 then icu_stay_ind=1;
+run;
+
+%mend;
+
+%ip_vars;
+
+proc freq data=ip_sample_3;
+table hosp_adm_ind*hosp_adm_days
+ip_ed_visit_ind*ip_ed_visit_cnt
+icu_stay_ind*icu_stay_cnt;
+hosp_adm_ind*hosp_death;
+run;
+
+/*save dataset*/
+data ccw.ip_sample;
+set ip_sample_3;
+run;
+
+/*****************************************************************/
+/*Output to stata for sum stats*/
+/*****************************************************************/
+proc export data=ccw.ip_sample
+	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\ip_sample.dta'
+	replace;
+	run;
+
