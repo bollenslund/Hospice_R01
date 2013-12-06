@@ -155,45 +155,130 @@ data ccw.ed;
 	set base_ed3;
 run;
 
-/*brings in revenue center charges for first rc entry for each claim*/
-proc sql;
-	create table base_ed_1
-	as select a.*, b.REV_CNTR_TOT_CHRG_AMT
-	from base_ed a
-	left join revenue1 b
-	on a.clm_id = b.clm_id
-	and a.CLM_THRU_DT = b.CLM_THRU_DT;
-quit;
-proc sort data=base_ed_1;
+proc sort data=base2;
 	by bene_id CLM_FROM_DT;
 run;
 
-/*list of op claims, one row per claim, w/ hs start/end dates*/
-data base_ed1;
-	set base_ed_1;
-	start1 = start; /*hs start var renamed*/
-	end1 = end;     /*hs end var renamed*/
-	start = CLM_FROM_DT;  /*op start date */
-	end = CLM_THRU_DT;    /*op end date */
-	label start1 = "Start Date (HS Stay 1)";
-	label end1 = "End Date (HS Stay 1)";
-	label start = "Start of OP Claim";
-	label end = "End of OP Claim";
-	format start date9. end date9. start1 date9. end1 date9.;
+data base3;
+	set base2;
+	rename start = start1;
+	rename end = end1;
 run;
+
+data base_cost;
+	set base3 (keep = bene_id clm_id CLM_FROM_DT CLM_PMT_AMT CLM_THRU_DT start1-start21 end1-end21) ;
+run;
+
+data base_count;
+	set base3;
+run;
+
 
 /*create indicator to identify op claims fully within hospice stays by dates*/
 %macro inhospice;
 options mlogic;
-	%do i = 1 %to 21;
-		data base_ed1;
-			set base_ed1;
+	%do i = 1 %to 14;
+		data base_cost;
+			set base_cost;
+			if start&i = . then do;
+			start&i = 99999;
+			end;
+			if end&i = . then do;
+			end&i = 99999;
+			end;
+			/*comparing numerical vs. missing will output that the numerical is always better. thus reaction of these numbers for missing*/
+		run;
+		data  base_cost;
+			set base_cost;
 			inhospice&i = 0;
-			if end <= end&i and start >= start&i then inhospice&i = 1;
+			posthospice&i = 0;
+			if CLM_FROM_DT >= start&i and CLM_FROM_DT <= end&i then inhospice&i = 1;
+			%let j = %eval(&i + 1);
+			if start&j = . then do;
+				if CLM_FROM_DT > end&i then posthospice&i = 1;
+			end;
+			if start&j ~= . then do;
+				if CLM_FROM_DT > end&i and CLM_FROM_DT < start&j then posthospice&i = 1;
+			end;
 		run;
 	%end;
 %mend;
 %inhospice;
+
+data base_cost1;
+	set base_cost (keep = BENE_ID CLM_ID CLM_FROM_DT CLM_THRU_DT CLM_PMT_AMT inhospice1-inhospice14 posthospice1-posthospice14);
+run;
+
+proc sort data=base_cost1;
+	by bene_id clm_from_dt;
+run;
+
+
+
+%macro cost;
+	%do i = 1 %to 14;
+		data base_cost1;
+			set base_cost1;
+			by bene_id;
+			retain inhospice_cost&i posthospice_cost&i;
+			if first.bene_id then do;
+			inhospice_cost&i = 0;
+			posthospice_cost&i = 0;
+			end;
+			if inhospice&i = 1 then do;
+			inhospice_cost&i = inhospice_cost&i + CLM_PMT_AMT;
+			end;
+			if posthospice&i = 1 then do;
+			posthospice_cost&i = posthospice_cost&i + CLM_PMT_AMT;
+			end;
+		run;
+	%end;
+%mend;
+%cost;
+
+data base_cost2;
+	set base_cost1;
+	by bene_id;
+	if last.bene_id;
+run;
+
+/*perm dataset*/
+data ccw.outpat_cost;
+	set base_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost14 posthospice_cost1-posthospice_cost14);
+run;
+
+/*working dataset*/
+data outpat_cost;
+	set base_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost14 posthospice_cost1-posthospice_cost14);
+run;
+
+data base_count;
+	set base_cost1;
+run;
+
+proc sort data=base_count;
+	by bene_id CLM_FROM_DT ;
+run;
+
+%macro count;
+	%do i=1 %to 14;
+		data base_count;
+			set base_count;
+			by bene_id;
+			retain in_count&i post_count&i;
+			in_count&i = in_count&i + inhospice&i;
+			post_count&i = post_count&i + posthospice&i;
+			if first.bene_id then do;
+			in_count&i = inhospice&i;
+			post_count&i = posthospice&i;
+			end;
+		run;
+	%end;
+%mend;
+%count;
+	
+
+/*last Start date 14th, not 21st*/
 
 /*creates indicator for op claim within any hs stay
 drops indicators for individual hs stays - not sure we want to drop them yet*/
