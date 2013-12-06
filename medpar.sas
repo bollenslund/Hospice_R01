@@ -369,6 +369,10 @@ run;
 %mend;
 %resort;
 
+data ccw.snf;
+	set snf4;
+run;
+
 
 /*************************************************************************/
 /*create additional variables for use in data analysis*/
