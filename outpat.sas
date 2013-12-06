@@ -276,9 +276,59 @@ run;
 	%end;
 %mend;
 %count;
-	
 
+data base_count1;
+	set base_count;
+	by bene_id;
+	if last.bene_id;
+run;
+
+data test;
+	set base_count1;
+	if bene_id = 'ZZZZZZZkOkk9yOy';
+run;
+
+data base_count_cost;
+	set base_count1;
+	drop inhospice1-inhospice14 posthospice1-posthospice14 CLM_PMT_AMT;
+run;
 /*last Start date 14th, not 21st*/
+
+%macro resort;
+	%do i = 1 %to 14;
+		data resort&i;
+			set base_count_cost (keep = bene_id inhospice_cost&i in_count&i posthospice_cost&i post_count&i);
+			OPcost_durHS&i = inhospice_cost&i;
+			OPcnt_durHS&i = in_count&i;
+			OPcost_aftHS&i = posthospice_cost&i;
+			OPcnt_aftHS&i = post_count&i;
+			drop inhospice_cost&i in_count&i posthospice_cost&i post_count&i;
+		run;
+	%end;
+	data base_count_cost1;
+		merge resort1-resort14;
+		by bene_id;
+	run;
+	proc datasets nolist;
+		delete resort1-resort14;
+	run;
+	quit;
+%mend;
+%resort;
+
+proc sql;
+	create table outpat_fin
+	as select *
+	from base_count_cost1 a
+	left join base_ed3 b
+	on a.bene_id = b.bene_id;
+quit;
+
+data ccw.outpat_fin;
+	set outpat_fin;
+run;
+
+/*relabel at some point*/
 
 /*creates indicator for op claim within any hs stay
 drops indicators for individual hs stays - not sure we want to drop them yet*/
