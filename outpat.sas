@@ -29,14 +29,6 @@ proc freq data=base;
 	table CLM_SRVC_CLSFCTN_TYPE_CD /missprint;
 run;
 
-data test;
-	set revenue;
-	if clm_id = 'ZZZZZZ4Zy4y9p33';
-run;
-data test1;
-	set base;
-	if clm_id = 'ZZZZZZ4Zy4y9p33';
-run;
 
 /*drop beneficiary ids that aren't in sample as defined in 
 master beneficiary summary file processing (age, ins status, hs stay)*/
@@ -73,19 +65,6 @@ proc sort data=revenue0;
 	by bene_id clm_id REV_CNTR;
 run;
 
-/*keep first revenue center entry for each claim */
-data revenue1;
-	set revenue0;
-	by bene_id clm_id;
-	if first.clm_id;
-run;
-
-proc freq data=revenue1;
-	table REV_CNTR;
-run;
-/*all total values*/
-
-
 /**************************************************************************/
 /* Identify emergency department use */
 /**************************************************************************/
@@ -95,51 +74,85 @@ run;
 data ed;
 	set revenue0;
 	if REV_CNTR >= 450 and REV_CNTR < 460;
+	ed = 1;
 run;
 proc sort data=ed;
-	by bene_id clm_id clm_thru_dt;
-run;
-/*creates total cost of ed use across all ed rev. codes by claim id*/
-data ed1;
-	set ed;
-	retain cost i;
 	by bene_id clm_id;
-	cost = cost + REV_CNTR_PMT_AMT_AMT;
-	i = i + 1;
-	if first.clm_id then do; cost = REV_CNTR_PMT_AMT_AMT; i = 0; end;
-run;
-
-proc freq data=ed1;
-	table i REV_CNTR;
-run;
-
-/*just keep last ed entry per claim id to get total cost
-331828 claims*/
-data ed2;
-	set ed1;
-	by bene_id clm_id;
-	if last.clm_id;
 run;
 
 /*bring in ed cost to base op claims dataset - can use this to get
 indicator for ED use if cost>0 and not null*/
 proc sql;
 	create table base_ed
-	as select a.*, b.cost
+	as select *
 	from base2 a
-	left join ed2 b
-	on a.clm_id = b.clm_id
-	and a.CLM_THRU_DT = b.CLM_THRU_DT;
+	left join ed b
+	on a.clm_id = b.clm_id;
 quit;
 
-proc freq;
-table cost /missprint;
+data base_ed1;
+	set base_ed (keep = bene_id clm_id CLM_FROM_DT ICD_DGNS_CD1 ICD_DGNS_CD2 ICD_DGNS_CD3 ICD_DGNS_CD4 ICD_DGNS_CD5 ICD_DGNS_CD6 ed);
+	if ed = . then delete;
 run;
 
-proc means; var cost; run;
+proc sort data=base_ed1 nodupkey;
+	by bene_id clm_from_dt;
+run;
 
-proc sort data=base_ed;
-	by bene_id CLM_FROM_DT;
+proc transpose data=base_ed1 prefix=start out=start_dates_ed;
+by bene_id;
+var CLM_FROM_DT;
+run;
+proc transpose data=base_ed1 prefix=prim_icd out = prim_icd_ed;
+by bene_id;
+var ICD_DGNS_CD1;
+run;
+proc transpose data = base_ed1 prefix = icd2_ out = sec_icd_ed;
+by bene_id;
+var ICD_DGNS_CD2;
+run;
+proc transpose data=base_ed1 prefix = icd3_ out = third_icd_ed;
+by bene_id;
+var ICD_DGNS_CD3;
+run;
+proc transpose data=base_ed1 prefix = icd4_ out = four_icd_ed;
+by bene_id;
+var ICD_DGNS_CD4;
+run;
+proc transpose data=base_ed1 prefix = icd5_ out = five_icd_ed;
+by bene_id;
+var ICD_DGNS_CD5;
+run;
+proc transpose data=base_ed1 prefix = icd6_ out = six_icd_ed;
+by bene_id;
+var ICD_DGNS_CD6;
+run;
+
+data base_ed2;
+	merge start_dates_ed prim_icd_ed sec_icd_ed third_icd_ed four_icd_ed five_icd_ed six_icd_ed;
+	by bene_id;
+	drop _NAME_ _LABEL_;
+run;
+
+%macro resort;
+	%do i = 1 %to 33;
+		data resort&i;
+			set base_ed2 (keep = bene_id start&i prim_icd&i icd2_&i icd4_&i icd5_&i icd6_&i);
+		run;
+	%end;
+	data base_ed3;
+		merge resort1-resort33;
+		by bene_id;
+	run;
+	proc datasets nolist;
+		delete resort1-resort33;
+	run;
+	quit;
+%mend;
+%resort;
+
+data ccw.ed;
+	set base_ed3;
 run;
 
 /*brings in revenue center charges for first rc entry for each claim*/
