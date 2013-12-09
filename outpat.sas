@@ -155,6 +155,8 @@ data ccw.ed;
 	set base_ed3;
 run;
 
+/************ COSTS ****************/
+
 proc sort data=base2;
 	by bene_id CLM_FROM_DT;
 run;
@@ -168,11 +170,6 @@ run;
 data base_cost;
 	set base3 (keep = bene_id clm_id CLM_FROM_DT CLM_PMT_AMT CLM_THRU_DT start1-start21 end1-end21) ;
 run;
-
-data base_count;
-	set base3;
-run;
-
 
 /*create indicator to identify op claims fully within hospice stays by dates*/
 %macro inhospice;
@@ -330,127 +327,3 @@ run;
 
 /*relabel at some point*/
 
-/*creates indicator for op claim within any hs stay
-drops indicators for individual hs stays - not sure we want to drop them yet*/
-/*************************************************************************/
-/*************************************************************************/
-/*************************************************************************/
-/*************************************************************************/
-data base_ed1a;
-	set base_ed1;
-	inhospice = 0;
-	if inhospice1 = 1 or inhospice2 = 1  or inhospice3 = 1 or inhospice4 = 1 or inhospice5 = 1 or inhospice6 = 1 or inhospice7 = 1 or inhospice8 = 1 or inhospice9 = 1 or inhospice10 = 1
-	or inhospice11 = 1 or inhospice12 = 1 or inhospice13 = 1 or inhospice14 = 1 or inhospice15 = 1 or inhospice16 = 1 or inhospice17 = 1 or inhospice18 = 1 or inhospice19 = 1 or inhospice20 = 1
-	or inhospice21 = 1 then inhospice = 1;
-	drop inhospice1-inhospice21;
-run;
-
-/*identify op claims partially within hs stay, 251 claims
-What do we do with these claims?? Ask Melissa*/
-data test;
-	set base_ed1 (keep = start end start1 end1 inhospice1);
-	if start > start1 and end > end1 and start < end1 then i = 1;
-run;
-proc freq data=test;
-	table i;
-run;
-/*337 who start during hospice and end claim out of the hospice start/end date*/
-data test1;
-	set test;
-	if i = 1;
-run;
-
-proc freq data=base_ed1a;
-	table inhospice;
-run;
-
-proc sort data=base_ed1a;
-	by bene_id CLM_FROM_DT;
-run;
-
-/*check of length of stay for the outpatient claims*/
-data testop_1;
-set base_ed1a;
-los=end-start+1;
-run;
-
-proc freq;
-table los /missprint;
-run;
-
-/*create count variable for number of claims per bene id
-max is 197*/
-data test;
-	set base_ed1a;
-	by bene_id;
-	retain i;
-	i = i+1;
-	if first.bene_id then i = 0;
-run;
-proc freq data=test;
-	table i;
-run;
-
-/*transpose start dates so get start1, start2... start197 variables*/
-proc transpose data = base_ed1a prefix = start out=start_dates;
-	by bene_id;
-	var start;
-run;
-/*transpose end dates*/
-proc transpose data= base_ed1a prefix = end out=end_dates;
-	by bene_id;
-	var end;
-run;
-/*transpose ED costs*/
-proc transpose data= base_ed1a prefix = edcost out=edcost;
-	by bene_id;
-	var cost;
-run;
-/*transpose principle diagnosis*/
-proc transpose data= base_ed1a prefix = prim_icd out=icd;
-	by bene_id;
-	var PRNCPAL_DGNS_CD;
-run;
-/*transpose total cost regardless of ED
-*********************************
-Need to pull total claim payment amount, not this rev center
-cost **************************************
-*/
-proc transpose data= base_ed1a prefix = total_cost out=cost;
-	by bene_id;
-	var REV_CNTR_TOT_CHRG_AMT;
-run;
-/*an indicator saying whether the claim is within hospice day*/
-proc transpose data= base_ed1a prefix = inhospice out=hospice_indic;
-	by bene_id;
-	var inhospice;
-run;
-
-/*bring start, end, costs and principle dx together into single dataset*/
-data base_ed2;
-	merge start_dates end_dates edcost icd cost hospice_indic;
-	by bene_id;
-	drop _NAME_ _LABEL_;
-run;
-
-/*re-sort variables so claim #1 variables all together, etc.*/
-%macro resort;
-	%do i = 1 %to 218;
-		data resort&i;
-			set base_ed2 (keep = bene_id start&i end&i inhospice&i total_cost&i edcost&i prim_icd&i);
-		run;
-	%end;
-	data base_ed3;
-		merge resort1-resort218;
-		by bene_id;
-	run;
-	proc datasets nolist;
-		delete resort1-resort218;
-	run;
-%mend;
-%resort;
-
-/*save outpatient claims dataset to the working folder*/
-data ccw.outpat;
-	set base_ed3;
-run;
