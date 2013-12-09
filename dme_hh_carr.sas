@@ -269,6 +269,10 @@ data hha_cost3;
 	set hha_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost8 posthospice_cost1-posthospice_cost7);
 run;
 
+data ccw.hha_cost;
+	set hha_cost3;
+run;
+
 /*carrier cost*/
 
 data carr;
@@ -395,3 +399,6 @@ data carr_cost3;
 	set carr_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost14 posthospice_cost1-posthospice_cost14);
 run;
 
+data ccw.carr_cost;
+	set carr_cost3;
+run;
