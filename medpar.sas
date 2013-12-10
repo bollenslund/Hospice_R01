@@ -232,7 +232,7 @@ resulting dataset is work.medpar5*/
                                 label IP_end&j = "Discharge (Stay &j)";
 								label IP_icued&j = "ICU/ED/Both? (0 = Neither, 1 = ED only, 2 = ICU only, 3 = Both)";
 								label IP_icu_day_cnt&j = "ICU day count (Stay &j)";
-                                                                label IP_cost&j = "Cost during Inpatient Stay (Stay &j)";
+                                label IP_cost&j = "Cost during Inpatient Stay (Stay &j)";
 								label IP_ICD9_1_&j = "ICD9 Primary Diagnosis (Stay &j)";
 								label IP_ICD9_2_&j = "ICD9 Diagnosis Code 2 (Stay &j)";
 								label IP_ICD9_3_&j = "ICD9 Diagnosis Code 3 (Stay &j)";
@@ -289,7 +289,7 @@ run;
 /*************************************************************************/
 
 data snf1;
-	set snf (keep = bene_id MEDPAR_ID BENE_DSCHRG_STUS_CD ADMSN_DT DSCHRG_DT DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD);
+	set snf (keep = bene_id MEDPAR_ID BENE_DSCHRG_STUS_CD ADMSN_DT MDCR_PMT_AMT DSCHRG_DT DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD);
 	death = 0;
 	if BENE_DSCHRG_STUS_CD = 'B' then death = 1;
 	drop BENE_DSCHRG_STUS_CD;
@@ -313,41 +313,51 @@ proc freq data=snf2;
 run;
 /*maximum of 12 admissions to the SNF*/
 
-proc transpose data=snf2 prefix=start out=start_dates_snf;
+proc transpose data=snf2 prefix=snf_start out=start_dates_snf;
 by bene_id;
 var admsn_dt;
 run;
-proc transpose data=snf2 prefix=end out = end_dates_snf;
+proc transpose data=snf2 prefix=snf_end out = end_dates_snf;
 by bene_id;
 var dschrg_dt;
 run;
-proc transpose data=snf2 prefix=prim_icd out = prim_icd_snf;
+proc transpose data=snf2 prefix=snf_prim_icd out = prim_icd_snf;
 by bene_id;
 var dgns_1_cd;
 run;
-proc transpose data = snf2 prefix = icd2_ out = sec_icd_snf;
+proc transpose data = snf2 prefix = snf_icd2_ out = sec_icd_snf;
 by bene_id;
 var dgns_2_cd;
 run;
-proc transpose data=snf2 prefix = icd3_ out = third_icd_snf;
+proc transpose data=snf2 prefix = snf_icd3_ out = third_icd_snf;
 by bene_id;
 var dgns_3_cd;
 run;
-proc transpose data=snf2 prefix = icd4_ out = four_icd_snf;
+proc transpose data=snf2 prefix = snf_icd4_ out = four_icd_snf;
 by bene_id;
 var dgns_4_cd;
 run;
-proc transpose data=snf2 prefix = icd5_ out = five_icd_snf;
+proc transpose data=snf2 prefix = snf_icd5_ out = five_icd_snf;
 by bene_id;
 var dgns_5_cd;
 run;
-proc transpose data=snf2 prefix = icd6_ out = six_icd_snf;
+proc transpose data=snf2 prefix = snf_icd6_ out = six_icd_snf;
 by bene_id;
 var dgns_6_cd;
 run;
+proc transpose data=snf2 prefix = snf_death out = death_snf;
+by bene_id;
+var death;
+run;
+proc transpose data=snf2 prefix = snf_cost out = cost_snf;
+by bene_id;
+var MDCR_PMT_AMT;
+run;
+
+
 
 data snf3;
-	merge start_dates_snf end_dates_snf prim_icd_snf sec_icd_snf third_icd_snf four_icd_snf five_icd_snf six_icd_snf;
+	merge start_dates_snf end_dates_snf prim_icd_snf sec_icd_snf third_icd_snf four_icd_snf five_icd_snf six_icd_snf cost_snf death_snf;
 	by bene_id;
 	drop _NAME_ _LABEL_;
 run;
@@ -355,7 +365,17 @@ run;
 %macro resort;
 	%do i = 1 %to 12;
 		data resort&i;
-			set snf3 (keep = bene_id start&i end&i prim_icd&i icd2_&i icd4_&i icd5_&i icd6_&i);
+			set snf3 (keep = bene_id snf_start&i snf_end&i snf_prim_icd&i snf_icd2_&i snf_icd3_&i snf_icd4_&i snf_icd5_&i snf_icd6_&i snf_cost&i snf_death&i);
+			label snf_start&i = "Admission (Stay &i)";
+			label snf_end&i = "Discharge (Stay &i)";
+			label snf_prim_icd&i = "Primary ICD (Stay &i)";
+			label snf_icd2_&i = "ICD9 Diagnosis Code II (Stay &i)";
+			label snf_icd3_&i = "ICD9 Diagnosis Code III (Stay &i)";
+			label snf_icd4_&i = "ICD9 Diagnosis Code IV (Stay &i)";
+			label snf_icd5_&i = "ICD9 Diagnosis Code V (Stay &i)";
+			label snf_icd6_&i = "ICD9 Diagnosis Code VI (Stay &i)";
+			label snf_cost&i = "Total Cost during Stay (Stay &i)";
+			label snf_death&i = "Death during Visit (Stay &i)";
 		run;
 	%end;
 	data snf4;
@@ -415,6 +435,7 @@ label icu_stay_days="ICU stays total day count";
 label icu_stay_cnt="Count of ICU stays";
 label hosp_death="Hospital death (from IP claims)";
 label ip_tot_cost="Total cost all IP claims";
+drop lengthmedi lengthmo allmedistatus1 allhmostatus1 allmedistatus2 allhmostatus2 allmedistatus3 allhmostatus3;
 run;
 
 /*macro to run through all ip stays to get count variables*/
@@ -453,6 +474,11 @@ run;
 
 %ip_vars;
 
+data test;
+	set ip_sample_3;
+	if IP_start39 ~= .;
+run;
+
 proc freq data=ip_sample_3;
 table hosp_adm_ind*hosp_adm_days
 ip_ed_visit_ind*ip_ed_visit_cnt
@@ -473,3 +499,55 @@ proc export data=ccw.ip_sample
 	replace;
 	run;
 
+/*****************************************************************/
+/***** Working with merging the SNF data with the sample data*****/
+/*****************************************************************/
+
+proc sql;
+create table ip_snf as select * from
+ccw.ip_sample a
+left join ccw.snf b
+on a.bene_id=b.bene_id;
+quit;
+
+/*initialize variables*/
+data ip_snf1;
+set ip_snf;
+/*snf ip admission variables*/
+snf_adm_ind=0;                          /*skilled nursing facility admission indicator*/
+if snf_start1~=. then snf_adm_ind=1;
+snf_adm_days=0;                        
+snf_adm_cnt=0;
+/*snf death variable*/
+snf_death=0;
+/*cost variable*/
+snf_cost=0;
+label snf_adm_ind="SNF admission indicator";
+label snf_adm_days="SNF total day count";
+label snf_adm_cnt="Count of SNF admissions";
+label snf_death="Death from SNF visit";
+label snf_cost="Total cost all SNF claims";
+run;
+
+/*macro to run through all ip stays to get count variables*/
+%macro snf_vars;
+data ip_snf2;
+set ip_snf1;
+retain snf_adm_days snf_adm_cnt snf_cost; 
+if snf_adm_ind=1 then do;
+   if snf_start1 ~=. and snf_end1 = . then snf_end1 = '31DEC2010'd;
+   snf_adm_days=snf_end1-snf_start1 + 1; /*initialize for 1st stay*/
+   snf_adm_cnt=1;
+   if snf_death1=1 then snf_death=1;
+   snf_cost=snf_cost1;
+   %do i=2 %to 12;
+   		 if snf_start&i~=. and snf_end&i = . then snf_end&i = '31DEC2010'd;
+         if snf_start&i~=. then snf_adm_days=snf_adm_days + (snf_end&i-snf_start&i) + 1;
+         if snf_start&i~=. then snf_adm_cnt=snf_adm_cnt+1;
+         if snf_death&i=1 then snf_death=1;
+         if snf_cost&i~=. then snf_cost=snf_cost + snf_cost&i;
+         %end;
+   end;
+run;
+%mend;
+%snf_vars;
