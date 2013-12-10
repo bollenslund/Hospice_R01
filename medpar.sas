@@ -482,7 +482,7 @@ run;
 proc freq data=ip_sample_3;
 table hosp_adm_ind*hosp_adm_days
 ip_ed_visit_ind*ip_ed_visit_cnt
-icu_stay_ind*icu_stay_cnt;
+icu_stay_ind*icu_stay_cnt
 hosp_adm_ind*hosp_death;
 run;
 
@@ -551,3 +551,11 @@ if snf_adm_ind=1 then do;
 run;
 %mend;
 %snf_vars;
+
+proc means data=ip_snf2 mean median;
+var snf_adm_ind snf_adm_days snf_adm_cnt snf_death snf_cost;
+run;
+proc  means data=ip_snf2 mean median;
+where snf_adm_ind = 1;
+var snf_adm_days snf_adm_cnt snf_death snf_cost;
+run;
