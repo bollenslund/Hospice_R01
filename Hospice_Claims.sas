@@ -787,4 +787,23 @@ proc export data=wk_fldr.hs_stays_cleaned
 	replace;
 	run;
 
+/***********************Changing Sample ************************/
 
+data hs_stays;
+set ccw.hs_stays_cleaned;
+age_at_enr = floor(age_at_enr/365.5);
+run;
+
+data final_sample;
+set ccw.for_medpar (keep = bene_id);
+flag = 1;
+run;
+
+proc sql;
+create table final_hs as select * from hs_stays
+where bene_id in (select bene_id from final_sample);
+quit;
+
+data ccw.final_hs;
+set final_hs;
+run;

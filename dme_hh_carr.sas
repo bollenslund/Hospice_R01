@@ -514,3 +514,7 @@ proc means data=dmehhacarr n mean median;
 where carr_cost ~=.;
 var carr_cost;
 run;
+
+data ccw.dmehhacarr;
+	set dmehhacarr;
+run;

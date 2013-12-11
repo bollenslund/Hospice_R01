@@ -559,3 +559,7 @@ proc  means data=ip_snf2 sum mean median;
 where snf_adm_ind = 1;
 var snf_adm_days snf_adm_cnt snf_death snf_cost;
 run;
+
+data ccw.ip_snf;
+	set ip_snf2;
+run;
