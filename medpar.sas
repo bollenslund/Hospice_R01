@@ -552,10 +552,10 @@ run;
 %mend;
 %snf_vars;
 
-proc means data=ip_snf2 mean median;
+proc means data=ip_snf2 sum mean median;
 var snf_adm_ind snf_adm_days snf_adm_cnt snf_death snf_cost;
 run;
-proc  means data=ip_snf2 mean median;
+proc  means data=ip_snf2 sum mean median;
 where snf_adm_ind = 1;
 var snf_adm_days snf_adm_cnt snf_death snf_cost;
 run;

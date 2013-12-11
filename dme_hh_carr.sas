@@ -1,7 +1,9 @@
 libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
-/*dme costs*/
+/************************************************************/
+/************************DME costs***************************/
+/************************************************************/
 
 data dme;
 	set merged.dme_claims_j;
@@ -107,16 +109,18 @@ run;
 		data dme_cost1;
 			set dme_cost1;
 			by bene_id;
-			retain inhospice_cost&i posthospice_cost&i;
+			retain dme_inhospice_cost&i dme_posthospice_cost&i;
 			if first.bene_id then do;
-			inhospice_cost&i = 0;
-			posthospice_cost&i = 0;
+			dme_inhospice_cost&i = 0;
+			dme_posthospice_cost&i = 0;
 			end;
 			if inhospice&i = 1 then do;
-			inhospice_cost&i = inhospice_cost&i + CLM_PMT_AMT;
+			dme_inhospice_cost&i = dme_inhospice_cost&i + CLM_PMT_AMT;
+			label dme_inhospice_cost&i = "Cost of DME during Hospice Visit &i";
 			end;
 			if posthospice&i = 1 then do;
-			posthospice_cost&i = posthospice_cost&i + CLM_PMT_AMT;
+			dme_posthospice_cost&i = dme_posthospice_cost&i + CLM_PMT_AMT;
+			label dme_posthospice_cost&i = "Cost of DME after Hospice Visit &i";
 			end;
 		run;
 	%end;
@@ -134,14 +138,16 @@ data dme_cost2;
 run;
 
 data dme_cost3;
-	set dme_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost8 posthospice_cost1-posthospice_cost7);
+	set dme_cost2 (keep = BENE_ID CLM_ID dme_inhospice_cost1-dme_inhospice_cost8 dme_posthospice_cost1-dme_posthospice_cost8);
 run;
 
 data ccw.dme_cost;
 	set dme_cost3;
 run;
 
-/*Home Health Costs*/
+/*************************************************************/
+/*******************Home Health Costs*************************/
+/*************************************************************/
 
 data hha;
 	set merged.hha_base_claims_j;
@@ -239,16 +245,18 @@ run;
 		data hha_cost1;
 			set hha_cost1;
 			by bene_id;
-			retain inhospice_cost&i posthospice_cost&i;
+			retain hha_inhospice_cost&i hha_posthospice_cost&i;
 			if first.bene_id then do;
-			inhospice_cost&i = 0;
-			posthospice_cost&i = 0;
+			hha_inhospice_cost&i = 0;
+			hha_posthospice_cost&i = 0;
 			end;
 			if inhospice&i = 1 then do;
-			inhospice_cost&i = inhospice_cost&i + CLM_PMT_AMT;
+			hha_inhospice_cost&i = hha_inhospice_cost&i + CLM_PMT_AMT;
+			label hha_inhospice_cost&i = "Cost of HHA during Hospice Visit &i";
 			end;
 			if posthospice&i = 1 then do;
-			posthospice_cost&i = posthospice_cost&i + CLM_PMT_AMT;
+			hha_posthospice_cost&i = hha_posthospice_cost&i + CLM_PMT_AMT;
+			label hha_posthospice_cost&i = "Cost of HHA after Hospice Visit &i";
 			end;
 		run;
 	%end;
@@ -266,14 +274,16 @@ data hha_cost2;
 run;
 
 data hha_cost3;
-	set hha_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost8 posthospice_cost1-posthospice_cost7);
+	set hha_cost2 (keep = BENE_ID CLM_ID hha_inhospice_cost1-hha_inhospice_cost8 hha_posthospice_cost1-hha_posthospice_cost8);
 run;
 
 data ccw.hha_cost;
 	set hha_cost3;
 run;
 
-/*carrier cost*/
+/****************************************************************/
+/********************** Carrier Cost ****************************/
+/****************************************************************/
 
 data carr;
 	set merged.bcarrier_claims_j;
@@ -369,16 +379,18 @@ run;
 		data carr_cost1;
 			set carr_cost1;
 			by bene_id;
-			retain inhospice_cost&i posthospice_cost&i;
+			retain carr_inhospice_cost&i carr_posthospice_cost&i;
 			if first.bene_id then do;
-			inhospice_cost&i = 0;
-			posthospice_cost&i = 0;
+			carr_inhospice_cost&i = 0;
+			carr_posthospice_cost&i = 0;
 			end;
 			if inhospice&i = 1 then do;
-			inhospice_cost&i = inhospice_cost&i + CLM_PMT_AMT;
+			carr_inhospice_cost&i = carr_inhospice_cost&i + CLM_PMT_AMT;
+			label carr_inhospice_cost&i = "Cost of Carrier during Hospice Visit &i";
 			end;
 			if posthospice&i = 1 then do;
-			posthospice_cost&i = posthospice_cost&i + CLM_PMT_AMT;
+			carr_posthospice_cost&i = carr_posthospice_cost&i + CLM_PMT_AMT;
+			label carr_posthospice_cost&i = "Cost of Carrier after Hospice Visit &i";
 			end;
 		run;
 	%end;
@@ -396,9 +408,109 @@ data carr_cost2;
 run;
 
 data carr_cost3;
-	set carr_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost14 posthospice_cost1-posthospice_cost14);
+	set carr_cost2 (keep = BENE_ID CLM_ID carr_inhospice_cost1-carr_inhospice_cost14 carr_posthospice_cost1-carr_posthospice_cost14);
 run;
 
 data ccw.carr_cost;
 	set carr_cost3;
+run;
+
+
+/********************************************************************/
+/******************************** Analysis **************************/
+/********************************************************************/
+
+data DME_analysis;
+	set ccw.dme_cost;
+run;
+data HHA_analysis;
+	set ccw.hha_cost;
+run;
+data CARR_analysis;
+	set ccw.carr_cost;
+run;
+
+data dme_analysis1;
+set dme_analysis;
+dme_cost=0;                        
+label dme_cost="Total DME Cost";
+run;
+data hha_analysis1;
+set hha_analysis;
+hha_cost=0;
+label hha_cost="Total HHA Cost";
+run;
+data carr_analysis1;
+set carr_analysis;
+carr_cost=0;
+label carr_cost = "Total Carrier costs";
+run;
+%macro dmehhacarr;
+data dme_analysis2;
+set dme_analysis1;
+retain dme_cost;
+%do i = 1 %to 8;
+dme_cost = dme_cost + dme_inhospice_cost&i;
+dme_cost = dme_cost + dme_posthospice_cost&i;
+%end;
+run;
+data hha_analysis2;
+set hha_analysis1;
+retain hha_cost;
+%do i = 1 %to 8;
+hha_cost = hha_cost + hha_inhospice_cost&i;
+hha_cost = hha_cost + hha_posthospice_cost&i;
+%end;
+run;
+data carr_analysis2;
+set carr_analysis1;
+retain carr_cost;
+%do i = 1 %to 14;
+carr_cost = carr_cost + carr_inhospice_cost&i;
+carr_cost = carr_cost + carr_posthospice_cost&i;
+%end;
+run;
+
+%mend;
+%dmehhacarr;
+
+proc sort data=dme_analysis2;
+by bene_id;
+run;
+proc sort data=hha_analysis2;
+by bene_id;
+run;
+proc sort data=carr_analysis2;
+by bene_id;
+run;
+
+data sample;
+	set ccw.for_medpar (keep = bene_id);
+run;
+
+data dmee;
+	merge sample dme_analysis2;
+	by bene_id;
+run;
+data dmehha;
+	merge dmee hha_analysis2;
+	by bene_id;
+run;
+data dmehhacarr;
+	merge dmehha carr_analysis2;
+	by bene_id;
+run;
+
+
+proc means data=dmehhacarr n mean median;
+where dme_cost ~=.;
+var dme_cost;
+run;
+proc means data=dmehhacarr n mean median;
+where hha_cost ~=.;
+var hha_cost;
+run;
+proc means data=dmehhacarr n mean median;
+where carr_cost ~=.;
+var carr_cost;
 run;
