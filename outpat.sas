@@ -99,31 +99,31 @@ proc sort data=base_ed1 nodupkey;
 	by bene_id clm_from_dt;
 run;
 
-proc transpose data=base_ed1 prefix=start out=start_dates_ed;
+proc transpose data=base_ed1 prefix=ed_start out=start_dates_ed;
 by bene_id;
 var CLM_FROM_DT;
 run;
-proc transpose data=base_ed1 prefix=prim_icd out = prim_icd_ed;
+proc transpose data=base_ed1 prefix=ed_prim_icd out = prim_icd_ed;
 by bene_id;
 var ICD_DGNS_CD1;
 run;
-proc transpose data = base_ed1 prefix = icd2_ out = sec_icd_ed;
+proc transpose data = base_ed1 prefix = ed_icd2_ out = sec_icd_ed;
 by bene_id;
 var ICD_DGNS_CD2;
 run;
-proc transpose data=base_ed1 prefix = icd3_ out = third_icd_ed;
+proc transpose data=base_ed1 prefix = ed_icd3_ out = third_icd_ed;
 by bene_id;
 var ICD_DGNS_CD3;
 run;
-proc transpose data=base_ed1 prefix = icd4_ out = four_icd_ed;
+proc transpose data=base_ed1 prefix = ed_icd4_ out = four_icd_ed;
 by bene_id;
 var ICD_DGNS_CD4;
 run;
-proc transpose data=base_ed1 prefix = icd5_ out = five_icd_ed;
+proc transpose data=base_ed1 prefix = ed_icd5_ out = five_icd_ed;
 by bene_id;
 var ICD_DGNS_CD5;
 run;
-proc transpose data=base_ed1 prefix = icd6_ out = six_icd_ed;
+proc transpose data=base_ed1 prefix = ed_icd6_ out = six_icd_ed;
 by bene_id;
 var ICD_DGNS_CD6;
 run;
@@ -137,7 +137,14 @@ run;
 %macro resort;
 	%do i = 1 %to 33;
 		data resort&i;
-			set base_ed2 (keep = bene_id start&i prim_icd&i icd2_&i icd4_&i icd5_&i icd6_&i);
+			set base_ed2 (keep = bene_id ed_start&i ed_prim_icd&i ed_icd2_&i ed_icd3_&i ed_icd4_&i ed_icd5_&i ed_icd6_&i);
+			label ed_start&i = "Start of ED Visit (Visit &i)";
+			label ed_prim_icd&i = "ICD-9 Diagnosis Code I (Visit &i)";
+			label ed_icd2_&i = "ICD-9 Diagnosis Code II (Visit &i)";
+			label ed_icd3_&i = "ICD-9 Diagnosis Code III (Visit &i)";
+			label ed_icd4_&i = "ICD-9 Diagnosis Code IV (Visit &i)";
+			label ed_icd5_&i = "ICD-9 Diagnosis Code V (Visit &i)";
+			label ed_icd6_&i = "ICD-9 Diagnosis Code VI (Visit &i)";
 		run;
 	%end;
 	data base_ed3;
@@ -327,3 +334,49 @@ run;
 
 /*relabel at some point*/
 
+/*summary statistics*/
+
+data op1;
+set ccw.outpat_fin;
+op_cost=0;                          /*skilled nursing facility admission indicator*/
+op_visit=0;
+op_ed_count = 0; 
+label op_cost="Total Oupatient Cost";
+label avg_visit="Total Number of Visits to Outpatient";
+label op_ed_count="Total Number of ED visits";
+run;
+
+/*macro to run through all ip stays to get count variables*/
+%macro op_vars;
+data op2;
+set op1;
+retain op_cost op_visit op_ed_count;
+%do i = 1 %to 14;
+op_cost = op_cost + OPcost_durHS&i;
+op_cost = op_cost + OPcost_aftHS&i;
+op_visit = op_visit + OPcnt_durHS&i;
+op_visit = op_visit + OPcnt_aftHS&i; 
+%end;
+%do j = 1 %to 33;
+if ed_start&j ~=. then op_ed_count = op_ed_count + 1;
+%end;
+run;
+%mend;
+
+%op_vars;
+quit;
+
+proc means data=op2 sum mean median ;
+var op_cost op_visit;
+run;
+proc  means data=op2 sum mean median;
+where ed_start1 ~= .;
+var op_ed_count;
+run;
+
+proc sql;
+create table op_total as select * from
+ccw.for_medpar a
+left join op2 b
+on a.bene_id=b.bene_id;
+quit;
