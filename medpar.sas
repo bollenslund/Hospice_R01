@@ -292,26 +292,56 @@ run;
 /*    Process skilled nursing facility (SNF) claims                      */
 /*************************************************************************/
 
+data test;
+set snf;
+if CVRD_LVL_CARE_THRU_DT ~= .;
+los = CVRD_LVL_CARE_THRU_DT - ADMSN_DT + 1;
+los_dis = DSCHRG_DT - ADMSN_DT;
+vardiff = LOS_DAY_CNT - los;
+vardiff1 = LOS_DAY_CNT - los_dis;
+if vardiff1 = .;
+run;
+
+proc freq data = test;
+table vardiff;
+run;
+/*In checking the date of SNF coverage variable lining up with the los day count
+the differences of days using those two variables were all positive (meaning the day stayed
+in SNF is always greater than what is covered). LOS day count will be added to the admission
+date if the discharge dat is missing (there were a total of 26% without discharge dates)*/ 
+
 data snf1;
 	set snf (keep = bene_id MEDPAR_ID BENE_DSCHRG_STUS_CD ADMSN_DT MDCR_PMT_AMT
-            DSCHRG_DT DSCHRG_DSTNTN_CD DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD);
+            DSCHRG_DT DSCHRG_DSTNTN_CD DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD LOS_DAY_CNT);
 	death = 0;
 	if BENE_DSCHRG_STUS_CD = 'B' then death = 1;
 	drop BENE_DSCHRG_STUS_CD;
+	if DSCHRG_DT = . then DSCHRG_DT = ADMSN_DT + LOS_DAY_CNT;
 run;
 
-/*dstn_cd = 30 - still patient, this explains the blank discharge dates
-Maybe need to merge individual claims to get unique snf stays??*/
-proc freq; table death DSCHRG_DSTNTN_CD; run;
-
-proc sort data = snf1;
-	by bene_id admsn_dt;
+proc sort data = snf1 out=snf1a;
+by bene_id ADMSN_DT DSCHRG_DT;
 run;
-/*~26% of claims have blank discharge dates?*/
-proc freq; table DSCHRG_DT /missprint; run;
+
+data snf1b;
+set snf1a;
+by bene_id;
+if ADMSN_DT < lag(DSCHRG_DT) then indic = 1;
+if first.bene_id then indic = 0;
+run;
+/*one observation where indic = 1*/
+
+data snf1c;
+set snf1b;
+if bene_id = 'ZZZZZZZIIk93OO3' then do ;
+if DSCHRG_DSTNTN_CD = '30' then delete;
+end;
+run;
+/*delete one of the claims from the "indic = 1" beneficiary. 
+Took the one with the longest length of stay.*/
 
 data snf2;
-	set snf1;
+	set snf1c;
 	by bene_id;
 	retain i;
 	i = i + 1;
