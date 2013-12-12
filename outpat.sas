@@ -25,7 +25,7 @@ run;
 proc freq data=revenue;
 	table REV_CNTR;
 run;
-proc freq data=base;
+proc freq data=base ;
 	table CLM_SRVC_CLSFCTN_TYPE_CD /missprint;
 run;
 
@@ -54,11 +54,19 @@ proc sql;
 	on a.bene_id = b.bene_id;
 quit;
 
-/*only keep inpatient claims after first hs enrollment*/
+/*only keep outpatient claims after first hs enrollment*/
 data base2;
 	set base1;
 	if CLM_FROM_DT < start then delete;
 	if start = . then delete;
+run;
+
+proc sort data=base2 out=base_test nodupkey;
+by bene_id clm_from_dt;
+run;
+
+proc sort data=base2 out=base_test2 nodupkey;
+by bene_id clm_id;
 run;
 
 proc sort data=revenue0;
@@ -66,11 +74,16 @@ proc sort data=revenue0;
 run;
 
 /**************************************************************************/
-/* Identify emergency department use */
+/* Identify emergency department use 
+This is done using revenue center codes. If any ed revenue center code
+is present on the claim, set the indicator for ed use = 1
+This is different from how we identify ed use in the inpatient claims
+(for ip claims, look at ed costs > 0 = ed visit)*/
 /**************************************************************************/
 
 
-/*keep only revenue center codes for ED use*/
+/*keep only revenue center codes for ED use
+set ed indicator = 1 if ed code is present for the claim*/
 data ed;
 	set revenue0;
 	if REV_CNTR >= 450 and REV_CNTR < 460;
@@ -80,25 +93,63 @@ proc sort data=ed;
 	by bene_id clm_id;
 run;
 
-/*bring in ed cost to base op claims dataset - can use this to get
-indicator for ED use if cost>0 and not null*/
+/*count of unique claim ids with ed codes present - 274154*/
+proc sql;
+       create table unique_ed as select count(distinct(clm_id)) as clm_count from ed;
+       quit;
+proc print;title 'count unique claims';
+run;
+
+/*keep just the indicator of ed use for each claim, one row per claim*/
+data ed_1;
+set ed(drop=REV_CNTR);
+by bene_id clm_id;
+if first.clm_id;
+run;
+
+/*keep only those ed indicators from rev codes that are in list of op claims post-first hs enrollment
+22270 claims*/
+proc sql;
+create table base_ed_test as select * from ed_1
+ where clm_id in (select clm_id from base2);
+quit;
+
+/*bring in ed indicator to base op claims dataset -
+so if any revenue code present for ed use, identify op claim as an ed visit*/
 proc sql;
 	create table base_ed
 	as select *
-	from base2 a
-	left join ed b
+	from base_ed_test a
+	left base2 b
 	on a.clm_id = b.clm_id;
 quit;
 
+proc freq; table ed; run;
+
 data base_ed1;
-	set base_ed (keep = bene_id clm_id CLM_FROM_DT ICD_DGNS_CD1 ICD_DGNS_CD2 ICD_DGNS_CD3 ICD_DGNS_CD4 ICD_DGNS_CD5 ICD_DGNS_CD6 ed);
+	set base_ed (keep = bene_id clm_id CLM_FROM_DT ICD_DGNS_CD1 ICD_DGNS_CD2 ICD_DGNS_CD3 ICD_DGNS_CD4 
+		ICD_DGNS_CD5 ICD_DGNS_CD6 ed CLM_PMT_AMT);
 	if ed = . then delete;
 run;
 
-proc sort data=base_ed1 nodupkey;
+proc sort data=base_ed1; by bene_id clm_from_dt;
+run;
+
+/*looking at claim from dates to see there are cases where a bene id has 2 ed visit claims on the same day*/
+data base_ed_test3;
+set base_ed1;
+retain i;
+by bene_id clm_from_dt;
+if first.clm_from_dt then i=0;
+i=i+1;
+run;
+
+/*sort before transpose to get long dataset*/
+proc sort data=base_ed1;
 	by bene_id clm_from_dt;
 run;
 
+/*ED visit date is assumed to be start date of op claim*/
 proc transpose data=base_ed1 prefix=ed_start out=start_dates_ed;
 by bene_id;
 var CLM_FROM_DT;
