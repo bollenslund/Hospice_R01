@@ -485,6 +485,18 @@ data op_total2;
 set op_total;
 if op_ed_ind=. then op_ed_ind=0;
 if op_visit_ind=. then op_visit_ind=0;
+label op_ed_ind = "ED in OP Visit Indicator";
+label op_visit_ind = "Visit to Outpatient Indicator";
+drop BENE_ENROLLMT_REF_YR FIVE_PERCENT_FLAG ENHANCED_FIVE_PERCENT_FLAG COVSTART CRNT_BIC_CD 
+STATE_CODE BENE_COUNTY_CD BENE_ZIP_CD BENE_AGE_AT_END_REF_YR BENE_BIRTH_DT BENE_DEATH_DT NDI_DEATH_DT BENE_SEX_IDENT_CD BENE_RACE_CD BENE_VALID_DEATH_DT_SW
+lengthmedi lengthmo allmedistatus1 allhmostatus1 allmedistatus2 allhmostatus2 allmedistatus3 allhmostatus3 start end;
+if op_cost = . then op_cost = 0;
+if op_visit = . then op_visit = 0;
+if op_ed_count = . then op_ed_count = 0;
+run;
+
+data ccw.outpat_fin;
+set op_total2;
 run;
 
 proc freq data=op_total2;
