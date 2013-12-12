@@ -29,8 +29,18 @@ and age (age < 64 at end of hospice enrollment year per mbsf)
 medpar.sas:
 Process medpar claims to get two claims datasets:
 1. Inpatient claims which has start/end dates, costs for each inpatient claim
-   Also contains indicator for hospital death and ICU use for each IP claim
+   Also contains indicator for hospital death and ICU and ED use for each IP claim
 2. SNF claims with start/end dates and costs for each SNF stay
+
+outpat.sas
+Process outpatient claims
+Get variables for emergency department outpatient visits and outpatietn costs 
+aggregated by date - costs during hospice and after hospice
+
+dme_hh_carr.sas
+Process remaining claim types to get aggregated costs during and after hospice
+
+
 
 
 

@@ -453,6 +453,12 @@ op_visit = op_visit + OPcnt_aftHS&i;
 %do j = 1 %to 33;
 if ed_start&j ~=. then op_ed_count = op_ed_count + 1;
 %end;
+op_visit_ind=0;
+if op_visit>0 & op_visit~=. then op_visit_ind=1;
+op_ed_ind=0;
+if op_ed_count>0 & op_ed_count~=. then op_ed_ind=1;
+label op_ed_ind="Indicator for any ED visit (from OP claims)"
+op_visit_ind="Indicator for any OP claim";
 run;
 %mend;
 
@@ -460,7 +466,7 @@ run;
 quit;
 
 proc means data=op2 sum mean median ;
-var op_cost op_visit;
+var op_cost op_visit op_ed_ind op_visit_ind;
 run;
 proc  means data=op2 sum mean median;
 where ed_start1 ~= .;
@@ -473,3 +479,27 @@ ccw.for_medpar a
 left join op2 b
 on a.bene_id=b.bene_id;
 quit;
+
+
+data op_total2;
+set op_total;
+if op_ed_ind=. then op_ed_ind=0;
+if op_visit_ind=. then op_visit_ind=0;
+run;
+
+proc freq data=op_total2;
+table op_visit_ind op_ed_ind /missprint;
+run;
+
+/*save working dataset with full sample and additional variables coded*/
+data ccw.op_sample;
+set op_total2;
+run;
+
+/*****************************************************************/
+/*Output to stata for sum stats*/
+/*****************************************************************/
+proc export data=ccw.op_sample
+	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\op_sample.dta'
+	replace;
+	run;
