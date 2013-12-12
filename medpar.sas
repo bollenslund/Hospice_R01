@@ -160,11 +160,14 @@ data SNF;
 run;
 /*no missing subjects (checked by proc freq)*/
 
+/*er charges are present in the claim - this is the definition used to create
+the icu ed indicator above*/
 data ed;
 	set medpar2;
 	if ER_CHRG_AMT > 0;
 run;
 
+/*claim source of inpatient admissioin = 7 = emergency room*/
 data src;
 	set medpar2;
 	if SRC_IP_ADMSN_CD = '7';
@@ -174,6 +177,7 @@ run;
 /*************************************************************************/
 /*    Process inpatient claims                                           */
 /*************************************************************************/
+/*start with ip claims dataset with icued indicator added*/
 proc sort data=medpar3;
 	by bene_id ADMSN_DT DSCHRG_DT;
 run;
@@ -289,16 +293,22 @@ run;
 /*************************************************************************/
 
 data snf1;
-	set snf (keep = bene_id MEDPAR_ID BENE_DSCHRG_STUS_CD ADMSN_DT MDCR_PMT_AMT DSCHRG_DT DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD);
+	set snf (keep = bene_id MEDPAR_ID BENE_DSCHRG_STUS_CD ADMSN_DT MDCR_PMT_AMT
+            DSCHRG_DT DSCHRG_DSTNTN_CD DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD);
 	death = 0;
 	if BENE_DSCHRG_STUS_CD = 'B' then death = 1;
 	drop BENE_DSCHRG_STUS_CD;
-run;	
+run;
+
+/*dstn_cd = 30 - still patient, this explains the blank discharge dates
+Maybe need to merge individual claims to get unique snf stays??*/
+proc freq; table death DSCHRG_DSTNTN_CD; run;
 
 proc sort data = snf1;
 	by bene_id admsn_dt;
 run;
-/*blank discharge dates?*/
+/*~26% of claims have blank discharge dates?*/
+proc freq; table DSCHRG_DT /missprint; run;
 
 data snf2;
 	set snf1;
@@ -529,12 +539,15 @@ label snf_death="Death from SNF visit";
 label snf_cost="Total cost all SNF claims";
 run;
 
-/*macro to run through all ip stays to get count variables*/
+/*macro to run through all snf stays to get count variables*/
 %macro snf_vars;
 data ip_snf2;
 set ip_snf1;
 retain snf_adm_days snf_adm_cnt snf_cost; 
 if snf_adm_ind=1 then do;
+   /****I don't think you can just assign missing end dates to be the end of the sample
+   claims dates, need to check vs next snf claim start date to see if they are continuous
+   stays*******************/
    if snf_start1 ~=. and snf_end1 = . then snf_end1 = '31DEC2010'd;
    snf_adm_days=snf_end1-snf_start1 + 1; /*initialize for 1st stay*/
    snf_adm_cnt=1;
