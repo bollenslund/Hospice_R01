@@ -12,8 +12,9 @@ libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
 /*Initialize datasets for base claims and revenue center codes*/
 
+/*this hospice dataset is already restricted to the sample*/
 data hospice;
-	set ccw.unique;
+	set  ccw.final_hs;
 run;
 data base;
 	set merged.outpatient_base_claims_j;
@@ -34,15 +35,16 @@ run;
 master beneficiary summary file processing (age, ins status, hs stay)*/
 proc sql;
 create table base0 as select * from base
-where bene_id in (select bene_id from ccw.for_medpar);
+where bene_id in (select bene_id from hospice);
 quit;
+
 proc sql;
 create table revenue0 as select BENE_ID,CLM_ID,REV_CNTR from revenue
-where bene_id in (select bene_id from ccw.for_medpar) ;
+where bene_id in (select bene_id from hospice) ;
 quit;
 
 data hospice1;
-	set hospice (keep = bene_id start end start2-start21 end2-end21);
+	set hospice (keep = bene_id start end start2-start21 end2-end21 count_hs_stays);
 run;
 
 /*bring hospice stay dates into outpatient claims dataset*/
@@ -54,17 +56,29 @@ proc sql;
 	on a.bene_id = b.bene_id;
 quit;
 
-/*only keep outpatient claims after first hs enrollment*/
+data test556;
+set base1;
+if count_hs_stays=21;
+run;
+
+/*only keep outpatient claims after first hs enrollment
+also, don't keep those that aren't in the sample
+Note - for beneficiaries with 1 or more op claim, the maximum number of hospice
+stays is 14 so all loops from here on in op processing will go for 14 iterations*/
 data base2;
 	set base1;
 	if CLM_FROM_DT < start then delete;
 	if start = . then delete;
 run;
 
+proc freq data=base2;
+table count_hs_stays;
+run;
+/*
 proc sort data=base2 out=base_test nodupkey;
 by bene_id clm_from_dt;
 run;
-
+*/
 proc sort data=base2 out=base_test2 nodupkey;
 by bene_id clm_id;
 run;
@@ -120,7 +134,7 @@ proc sql;
 	create table base_ed
 	as select *
 	from base_ed_test a
-	left base2 b
+	left join base2 b
 	on a.clm_id = b.clm_id;
 quit;
 
@@ -209,27 +223,37 @@ run;
 %mend;
 %resort;
 
+/*save dataset - 14057 bids in sample have outpatient claims with at least 1 ed visit
+This dataset is only bids with at least 1 ed visit*/
 data ccw.ed;
 	set base_ed3;
 run;
 
-/************ COSTS ****************/
+/*********************************************************************/
+/************                  COSTS                  ****************/
+/*********************************************************************/
 
+/* start with list of base op claims for bene ids in our sample and after 
+first hospice admission date
+This has all hospice stay start and end dates included*/
 proc sort data=base2;
 	by bene_id CLM_FROM_DT;
 run;
 
+/*rename hospice start and end date variables*/
 data base3;
 	set base2;
 	rename start = start1;
 	rename end = end1;
 run;
 
+/*only keep variables needed to calculate costs for op claims*/
 data base_cost;
-	set base3 (keep = bene_id clm_id CLM_FROM_DT CLM_PMT_AMT CLM_THRU_DT start1-start21 end1-end21) ;
+	set base3 (keep = bene_id clm_id CLM_FROM_DT CLM_PMT_AMT CLM_THRU_DT start1-start14 end1-end14) ;
 run;
 
-/*create indicator to identify op claims fully within hospice stays by dates*/
+/*create indicator to identify op claims that start during or after hospice stays by dates
+Loop 14 times - once for each hospice stay start/end date pair*/
 %macro inhospice;
 options mlogic;
 	%do i = 1 %to 14;
@@ -241,7 +265,8 @@ options mlogic;
 			if end&i = . then do;
 			end&i = 99999;
 			end;
-			/*comparing numerical vs. missing will output that the numerical is always better. thus reaction of these numbers for missing*/
+			/*comparing numerical vs. missing will output that the numerical is always better. 
+                        thus reaction of these numbers for missing*/
 		run;
 		data  base_cost;
 			set base_cost;
@@ -262,6 +287,10 @@ options mlogic;
 
 data base_cost1;
 	set base_cost (keep = BENE_ID CLM_ID CLM_FROM_DT CLM_THRU_DT CLM_PMT_AMT inhospice1-inhospice14 posthospice1-posthospice14);
+run;
+
+proc freq data=base_cost1;
+table inhospice1-inhospice14 posthospice1-posthospice14;
 run;
 
 proc sort data=base_cost1;
@@ -291,15 +320,23 @@ run;
 %mend;
 %cost;
 
+/*36077 beneficiaries have at least 1 op claim*/
 data base_cost2;
 	set base_cost1;
 	by bene_id;
 	if last.bene_id;
 run;
 
+/*check comparison of all op claims - checks out with the 36077 above*/
+proc sql;
+       create table unique_op as select count(distinct(bene_id)) as bene_count from base2;
+       quit;
+proc print;title 'count unique beneids with op claim';
+run;
+
 /*perm dataset*/
 data ccw.outpat_cost;
-	set base_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost14 posthospice_cost1-posthospice_cost14);
+	set base_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost14 posthospice_cost1-posthospice_cost14;
 run;
 
 /*working dataset*/
@@ -307,6 +344,8 @@ data outpat_cost;
 	set base_cost2 (keep = BENE_ID CLM_ID inhospice_cost1-inhospice_cost14 posthospice_cost1-posthospice_cost14);
 run;
 
+/*get count of op claims within each hospice stay and between hospice stays*/
+/*this is list of all op claims for the sample after the first hs enroll date*/
 data base_count;
 	set base_cost1;
 run;
@@ -371,6 +410,7 @@ run;
 %mend;
 %resort;
 
+/*merge in ed information and cost information to get a complete outpatient dataset*/
 proc sql;
 	create table outpat_fin
 	as select *
@@ -383,17 +423,19 @@ data ccw.outpat_fin;
 	set outpat_fin;
 run;
 
+
 /*relabel at some point*/
 
-/*summary statistics*/
+/*summary statistics for the outpatient dataset
+(not for overall sample)*/
 
 data op1;
 set ccw.outpat_fin;
-op_cost=0;                          /*skilled nursing facility admission indicator*/
+op_cost=0;
 op_visit=0;
 op_ed_count = 0; 
 label op_cost="Total Oupatient Cost";
-label avg_visit="Total Number of Visits to Outpatient";
+label op_visit="Total Number of Visits to Outpatient";
 label op_ed_count="Total Number of ED visits";
 run;
 
