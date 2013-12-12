@@ -681,22 +681,29 @@ run;
 /*create variable for total hospice length of stay*/
 data total_los;
 set macro5;
+total_los=stay_los;
 array stays stay_los2-stay_los21;
 do over stays;
 if stays=. then stays=0;
+total_los=total_los + stays;
 end;
-total_los=stay_los+sum(stay_los2-stay_los21);
 run;
-proc freq;
+
+data test444;
+set total_los;
+if stay_los21>0;
+run;
+
+proc freq data=total_los;
 table total_los;
 run;
-proc means;
+proc means data=total_los;
 var total_los;
 run;
-proc freq;
+proc freq data=total_los;
 table discharge;
 run;
-/*create variable for hospice disenrollment*/
+/*create variable for hospice disenrollment - for first hospice enrollment*/
 data disenroll_1;
 set total_los;
 hs1_death=0;
