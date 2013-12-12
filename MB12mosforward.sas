@@ -1,6 +1,15 @@
 /*This file processes the master beneficiary summary files and uses
 age and Medicare coverage / HMO use to define the sample of 
-hopsice enrollees to be analyzed */
+hopsice enrollees to be analyzed 
+
+Final files created are :
+1. ccw.mb_final
+   Cleaned MBS information for the sample
+2. ccw.for_medpar
+   Cleaned MBS information for the sample (same as above) with stay 1 hospice start and 
+   end dates merged in
+   
+*/
 
 libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
@@ -152,7 +161,7 @@ run;
 
 /*pull hospice first enrollment start date from clean hospice claims dataset*/
 data work.hospice_startdate;
-	set ccw.unique (keep = bene_id start);
+	set ccw.hs_stays_cleaned (keep = bene_id start);
 	startyear = year(start);
 	startmonth = month(start);
 run;
@@ -502,10 +511,11 @@ proc sql;
 	create table formedpar
 	as select a.*, b.start, b.end
 	from medihmo5 a
-	left join ccw.unique b
+	left join ccw.hs_stays_cleaned b
 	on a.bene_id = b.bene_id;
 quit;
 
+/*save working dataset that has medpar sample, info and hospice stay #1 start and end dates*/
 data ccw.for_medpar;
 	set formedpar;
 run;

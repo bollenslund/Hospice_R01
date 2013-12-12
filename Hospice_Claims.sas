@@ -5,7 +5,12 @@
 4. Restructures dataset so one row per beneficiary with details
 about all their hospice stays as separate variables
 
-Final dataset saved as wk_fldr.hs_stays_cleaned */
+Dataset saved as ccw.hs_stays_cleaned
+
+Then using criteria defined in the mbs processing steps, save
+hospice dataset with just mbs in sample. Dataset saved as:
+ccw.final_hs
+*/
 
 /*********************************************************************/
 /*********************************************************************/
@@ -13,9 +18,8 @@ Final dataset saved as wk_fldr.hs_stays_cleaned */
 /*********************************************************************/
 /*********************************************************************/
 
-libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\raw_sas';
-libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
-libname wk_fldr 'J:\Geriatrics\Geri\Hospice Project\Hospice\working'; 
+libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
+libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10'; 
 
 data work.hospice_base;
         set merged.hospice_base_claims_j;
@@ -752,7 +756,7 @@ table bene_race_cd;
 run;
 
 /*saves final dataset*/
-data wk_fldr.hs_stays_cleaned;
+data ccw.hs_stays_cleaned;
         set clean_1;
 		drop stay_los2-stay_los21; 
 run;
@@ -774,7 +778,7 @@ run;
 /*Output frequency tables*/
 /*****************************************************************/
 ods rtf file="J:\Geriatrics\Geri\Hospice Project\output\hs_freq_tab.rtf";
-proc freq data=wk_fldr.hs_stays_cleaned;
+proc freq data=ccw.hs_stays_cleaned;
 table count_hs_stays discharge discharge_i provider_i;
 run;
 ods rtf close;
@@ -782,28 +786,39 @@ ods rtf close;
 /*****************************************************************/
 /*Convert dataset to stata to get additional summary statistics*/
 /*****************************************************************/
-proc export data=wk_fldr.hs_stays_cleaned 
+proc export data=ccw.hs_stays_cleaned
 	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\hs_stays_cleaned.dta'
 	replace;
 	run;
 
 /***********************Changing Sample ************************/
-
+/*Use the master beneficiary sample selection criteria to remove
+observations from the clean hospice claims dataset
+This brings the max number of stays / beneficiary down to 14
+so drop unneeded variables*/
+/***************************************************************/
 data hs_stays;
 set ccw.hs_stays_cleaned;
 age_at_enr = floor(age_at_enr/365.5);
 run;
 
+/*this final sample is created using the mbs files in the code MB12mosforward.sas*/
 data final_sample;
-set ccw.for_medpar (keep = bene_id);
+set ccw.mb_final (keep = bene_id);
 flag = 1;
 run;
 
+/*only keep beneficiary ids that are in the final sample list created from mbs criteria*/
 proc sql;
 create table final_hs as select * from hs_stays
 where bene_id in (select bene_id from final_sample);
 quit;
 
+proc freq data=final_hs;
+table start14-start21 end14-end21 /missprint;
+run;
+
+/*save hospice dataset restricted to just the sample*/
 data ccw.final_hs;
 set final_hs;
 run;
