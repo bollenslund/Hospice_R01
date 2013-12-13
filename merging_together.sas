@@ -81,7 +81,7 @@ left join final_dmehhacarr b
 on a.bene_id = b.bene_id;
 quit;
 
-data ccw.final;
+data ccw.final(compress=yes);
 set final3;
 run;
 
