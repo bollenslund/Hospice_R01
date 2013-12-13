@@ -1,3 +1,7 @@
+/*uses hospice start/end dates to get costs from durable medical equipment,
+hoome health agency and carrier claims
+Costs are aggregated to within or after hospice stay level */
+
 libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
@@ -13,14 +17,24 @@ proc sort data=dme;
 by bene_id clm_id CLM_FROM_DT;
 run;
 
+/*merge with mbs + stay 1 hs start/end date dataset from mbs processing*/
 proc sql;
-create table dme1 as select a.*, b.start, b.end from dme a
+create table dme1 as select a.*, b.start, b.end, b.count_hs_stays from dme a
 left join ccw.for_medpar b
 on a.bene_id = b.bene_id;
 quit;
 
-/*should I get rid of zero costs?*/
+proc freq data=dme1;
+table count_hs_stays;
+run;
 
+/*should I get rid of zero costs? - 
+Yes, I think thats the right thing to do since we aren't tracking number of claims*/
+
+/*keep claims with 
+1. first hospice stay start date (that is, in sample),
+2. after first hs enrollment and
+3. with payment amount>0 */
 data dme1;
 	set dme1;
 	if start ~=.;
@@ -28,18 +42,25 @@ data dme1;
 	if CLM_PMT_AMT ~= 0;
 run;
 
+proc freq data=dme1;
+table count_hs_stays;
+run;
+
+/*max number of hospice stays for those with dme claims post hospice enrollment = 14*/
+
 proc sort data=dme1;
 by bene_id CLM_FROM_DT;
 run;
 
 data hospice;
-	set ccw.unique;
+	set ccw.final_hs;
 run;
 
 data hospice1;
 	set hospice (keep = bene_id start end start2-start14 end2-end14);
 run;
 
+/*merge in all hospice start and end dates to dme claims*/
 proc sql;
 	create table dme2
 	as select *
@@ -48,16 +69,22 @@ proc sql;
 	on a.bene_id = b.bene_id;
 quit;
 
+/*rename first hospice stay date variables for consistency*/
 data dme2;
 	set dme2;
 	rename start = start1;
 	rename end = end1;
 run;
 
+/*only keep variables required to get dme costs by date*/
 data dme_cost;
 	set dme2 (keep = bene_id clm_id CLM_FROM_DT CLM_PMT_AMT CLM_THRU_DT start1-start14 end1-end14) ;
 run;
 
+/*create indicators for whether a cost is in or after each hospice stay
+Note: Use claim start date to determine time of dme claim (not claim thru date) so if claim starts
+within a hospice stay, the payment is fully assigned to that stay even if the end date is after the 
+end date of the hospice stay*/
 %macro inhospice;
 options mlogic;
 	%do i = 1 %to 14;
@@ -69,7 +96,8 @@ options mlogic;
 			if end&i = . then do;
 			end&i = 99999;
 			end;
-			/*comparing numerical vs. missing will output that the numerical is always better. thus reaction of these numbers for missing*/
+			/*comparing numerical vs. missing will output that the numerical is always better. 
+                        thus reaction of these numbers for missing*/
 		run;
 		data dme_cost;
 			set dme_cost;
@@ -92,6 +120,7 @@ proc freq data=dme_cost;
 	table inhospice1 ;
 run;
 
+/*just keep variables we need*/
 data dme_cost1;
 	set dme_cost (keep = BENE_ID CLM_ID CLM_FROM_DT CLM_THRU_DT CLM_PMT_AMT inhospice1-inhospice14 posthospice1-posthospice14);
 run;
@@ -104,6 +133,12 @@ proc sort data=dme_cost1;
 	by bene_id clm_from_dt;
 run;
 
+/*macro to aggregate costs for each hospice stay during and after time period based on indicators created above
+**********************************************
+Eric - take a look at this macro - it doesn't seem to work quite right,
+take a look at the table I made afterwards - indicator for cost during hs1=0 for all but then they all
+have costs assigned...  I don't know if the same problem is present in the outpatient claims totals too.
+***********************************************/
 %macro cost;
 	%do i = 1 %to 14;
 		data dme_cost1;
@@ -129,6 +164,12 @@ run;
 
 proc freq data=dme_cost1;
 	table inhospice_cost8;
+run;
+
+/*take a look at the costs in this table!*/
+data zzztest1;
+set dme_cost1;
+if dme_inhospice_cost8~=0;
 run;
 
 data dme_cost2;
