@@ -1,4 +1,17 @@
-data final_hs;
+/*
+Code merges the individual clean claims files together. Files merged are:
+1. ccw.final_hs - hospice stay data, limited to sample from mbs processing
+2. ccw.mb_final - demo, cc and other information from master beneficiary files
+3. cw.ip_snf - inpatient and snf claims
+4. ccw.outpat_fin - outpatient claims
+5. ccw.dmehhacarr - costs from dme, hh and carrier claims
+
+Final data files saved in sas as ccw.final and in Stata as all_claims_clean.dta
+
+*/
+
+libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
+libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';data final_hs;
 set ccw.final_hs;
 run;
 
@@ -71,3 +84,11 @@ quit;
 data ccw.final;
 set final3;
 run;
+
+/*****************************************************************/
+/*Output to stata for sum stats*/
+/*****************************************************************/
+proc export data=ccw.final
+	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\all_claims_clean.dta'
+	replace;
+	run;

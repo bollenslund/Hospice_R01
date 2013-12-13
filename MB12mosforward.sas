@@ -506,11 +506,11 @@ data ccw.mb_final;
 run;
 /*if excluded, the total is 149814*/
 
-/*bring in hs start/end dates so can use this to process claims files*/
+/*bring in hs start/end dates and stay count so can use this to process claims files*/
 proc sql;
 	create table formedpar
-	as select a.*, b.start, b.end
-	from medihmo5 a
+	as select a.*, b.start, b.end,b.count_hs_stays
+	from ccw.mb_final a
 	left join ccw.hs_stays_cleaned b
 	on a.bene_id = b.bene_id;
 quit;
