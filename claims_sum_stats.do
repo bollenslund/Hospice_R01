@@ -44,7 +44,7 @@ icu_stay_ind icu_stay_cnt icu_stay_days hosp_death ip_tot_cost
 	ctitle("", "Mean", "Median", "Min", "Max", "N") ///
 	rtitle("Hospital admission?" \ "Hosp adm - count" \ "Hosp adm - days" \ "ED visit?" ///
 	\ "ED visit count" \ "ICU Stay?" \ ///
-	"ICU Stay - count" \ "ICU Stay - days" \ "Hospital death" \ "Total cost IP claims") ///
+	"ICU Stay - count" \ "ICU Stay - days" \ "Hospital death" \ "Total payments IP claims") ///
 	sdec(3,0,0,0) replace
 
 
@@ -141,7 +141,7 @@ local opvars op_visit_ind op_visit op_cost op_ed_ind op_ed_count
  frmttable using "J:\Geriatrics\Geri\Hospice Project\output\claims_sum_stats", ///
 	statmat(op_vars) title("Means of hospital use variables from OP claims - overall sample") ///
 	ctitle("", "Mean", "Median", "Min", "Max", "N") ///
-	rtitle("OP Claim?" \ "OP Claim - count" \ "OP Claims total cost" \ "ED visit?" ///
+	rtitle("OP Claim?" \ "OP Claim - count" \ "OP Claims total payments" \ "ED visit?" ///
 	\ "ED visit count") ///
 	sdec(3,0,0,0,0) addtable
 
@@ -161,8 +161,8 @@ local opvars2  op_visit op_cost op_ed_ind op_ed_count
  mat list op_vars2
  frmttable using "J:\Geriatrics\Geri\Hospice Project\output\claims_sum_stats", ///
 	statmat(op_vars2) title("Means of hospital use variables from OP claims - those with at least 1 op claim") ///
-	ctitle("", "Mean", "Median", "Min", "Max", "N") ///
-	rtitle("OP Claim - count" \ "OP Claims total cost" \ "ED visit?" ///
+	ctitle("Payments", "Mean", "Median", "Min", "Max", "N") ///
+	rtitle("OP Claim - count" \ "OP Claims total payments" \ "ED visit?" ///
 	\ "ED visit count") ///
 	sdec(3,0,0,0) addtable
 	
@@ -187,13 +187,13 @@ mat other_vars = J(3,5,.)
 	statmat(other_vars) title("Means of claims payments from DME, HHA and Carrier claims - full sample") ///
 	ctitle("Payments", "Mean", "Median", "Min", "Max", "N") ///
 	rtitle("Total DME" \ "Total HHA" \ "Total Carrier") ///
-	sdec(3,0,0,0) addtable
+	sdec(0,0,0,0,0) addtable
 
 local otherclms dme_cost hha_cost carr_cost
 mat other_vars = J(3,5,.)
  local j=1
  foreach v in `otherclms' {
- qui sum(`v') if disenroll==1, detail
+ qui sum(`v') if disenr==1, detail
  mat other_vars[`j',1]=r(mean)
  mat other_vars[`j',2]=r(p50) 
  mat other_vars[`j',3]=r(min)
@@ -206,7 +206,7 @@ mat other_vars = J(3,5,.)
 	statmat(other_vars) title("Means of claims payments from DME, HHA and Carrier claims - obs who disenroll") ///
 	ctitle("", "Mean", "Median", "Min", "Max", "N") ///
 	rtitle("Total DME" \ "Total HHA" \ "Total Carrier") ///
-	sdec(3,0,0,0) addtable
+	sdec(0,0,0,0,0) addtable
 	
 log close
 
