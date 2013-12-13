@@ -123,6 +123,12 @@ local snf_vars2 snf_adm_cnt snf_adm_days  snf_death snf_cost
 **********************************************************
 ******** Outpatient claims sum stats *********************
 **********************************************************
+replace op_visit_ind=1 if(op_visit>0 & op_visit!=.)
+tab op_visit_ind, missing
+
+replace op_ed_ind=1 if(op_ed_count>0 & op_ed_count!=.)
+tab op_ed_ind, missing
+
 
 local opvars op_visit_ind op_visit op_cost op_ed_ind op_ed_count
 
@@ -169,6 +175,10 @@ local opvars2  op_visit op_cost op_ed_ind op_ed_count
 **********************************************************
 ******** DME, HH and Carrier claims payments *************
 **********************************************************	
+
+replace dme_cost=0 if dme_cost==.
+replace hha_cost=0 if hha_cost==.
+replace carr_cost=0 if carr_cost==.
 
 local otherclms dme_cost hha_cost carr_cost
 mat other_vars = J(3,5,.)
