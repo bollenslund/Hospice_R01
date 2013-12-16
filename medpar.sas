@@ -292,15 +292,24 @@ run;
 /*    Process skilled nursing facility (SNF) claims                      */
 /*************************************************************************/
 
+/*Create table with just claims that don't have a discharge date, that is
+claims that don't cover full stay b/c patient is still a patient at the end
+of the claim
+Some of these patients have a missing cvrd_lvl_care_thru_dt so this step
+is just a check
+Result is that we use LOS count from CMS to determine actual stay end date
+since LOS count from CMS agrees with CVRD_LVL_CARE_THRU_DT in the cases where
+it is available*/
 data test;
 set snf;
 if CVRD_LVL_CARE_THRU_DT ~= .;
-los = CVRD_LVL_CARE_THRU_DT - ADMSN_DT + 1;
-los_dis = DSCHRG_DT - ADMSN_DT;
-vardiff = LOS_DAY_CNT - los;
-vardiff1 = LOS_DAY_CNT - los_dis;
-if vardiff1 = .;
+los = CVRD_LVL_CARE_THRU_DT - ADMSN_DT + 1; /*LOS calculated from claim thru date*/
+los_dis = DSCHRG_DT - ADMSN_DT; /*LOS calculated from admission/disch dates*/
+vardiff = LOS_DAY_CNT - los; /*LOS_DAY_CNT calculated by CMS*/
+vardiff1 = LOS_DAY_CNT - los_dis; /*this is . for cases where disch date is missing*/
+if vardiff1 = .;   /*vardiff1=0 for stays where disch destn code not equal to 30*/
 run;
+
 
 proc freq data = test;
 table vardiff;
@@ -308,40 +317,100 @@ run;
 /*In checking the date of SNF coverage variable lining up with the los day count
 the differences of days using those two variables were all positive (meaning the day stayed
 in SNF is always greater than what is covered). LOS day count will be added to the admission
-date if the discharge dat is missing (there were a total of 26% without discharge dates)*/ 
+date if the discharge date is missing (there were a total of 26% without discharge dates)*/
 
 data snf1;
 	set snf (keep = bene_id MEDPAR_ID BENE_DSCHRG_STUS_CD ADMSN_DT MDCR_PMT_AMT
-            DSCHRG_DT DSCHRG_DSTNTN_CD DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD DGNS_6_CD LOS_DAY_CNT);
+            DSCHRG_DT DSCHRG_DSTNTN_CD DGNS_1_CD DGNS_2_CD DGNS_3_CD DGNS_4_CD DGNS_5_CD 
+            DGNS_6_CD LOS_DAY_CNT);
 	death = 0;
 	if BENE_DSCHRG_STUS_CD = 'B' then death = 1;
-	drop BENE_DSCHRG_STUS_CD;
-	if DSCHRG_DT = . then DSCHRG_DT = ADMSN_DT + LOS_DAY_CNT;
+	*drop BENE_DSCHRG_STUS_CD;
+	/*replace discharge date with calculated date from los if still patient status code*/
+	if (DSCHRG_DT = . and BENE_DSCHRG_STUS_CD='C') then DSCHRG_DT = ADMSN_DT + LOS_DAY_CNT;
+run;
+
+/*All obs with missing disch date were still patient*/
+proc freq;
+table DSCHRG_DT /missprint;
 run;
 
 proc sort data = snf1 out=snf1a;
 by bene_id ADMSN_DT DSCHRG_DT;
 run;
 
+/* This is not used because we aren't worried about claims that overlap 
+over multiple stays yet...
 data snf1b;
 set snf1a;
+drop BENE_DSCHRG_STUS_CD;
+by bene_id;
+if ADMSN_DT <= (lag(DSCHRG_DT)+1) and DSCHRG_DSTNTN_CD='30' then indic = 1;
+if first.bene_id then indic = 0;
+run;
+*/
+data snf1b;
+set snf1a;
+drop BENE_DSCHRG_STUS_CD;
 by bene_id;
 if ADMSN_DT < lag(DSCHRG_DT) then indic = 1;
 if first.bene_id then indic = 0;
 run;
+
+proc freq;
+table indic;
+run;
 /*one observation where indic = 1*/
 
+/*This bid has two claims with the same start date, different discharge dates
+this is the person with indic=1 above
+The two claims have the same dx codes but the first claim with the earlier disch date
+has destination code = still patient so drop that claim
+However, need to merge costs to get total snf stay cost*/
+data zztest4;
+set snf1b;
+if bene_id = 'ZZZZZZZIIk93OO3';
+run;
+
+proc sort data=zztest4;
+by bene_id admsn_dt dschrg_dt;
+run;
+
+data zztest5;
+set zztest4;
+lag_pmt=lag(MDCR_PMT_AMT);
+if DSCHRG_DSTNTN_CD =05 then total_calc_pmt=MDCR_PMT_AMT+lag_pmt;
+run;
+
+data zztest6;
+set zztest5;
+if DSCHRG_DSTNTN_CD = '30' then delete;
+MDCR_PMT_AMT=total_calc_pmt;
+drop lag_pmt total_calc_pmt;
+run;
+
+/*merge the total cost into the claims dataset for the one claim that was merged*/
+
+/*drop the two claims for the bid from the dataset and then merge the single claim 
+with total cost back in*/
 data snf1c;
 set snf1b;
-if bene_id = 'ZZZZZZZIIk93OO3' then do ;
-if DSCHRG_DSTNTN_CD = '30' then delete;
-end;
+if bene_id = 'ZZZZZZZIIk93OO3' and ADMSN_DT='19JUN2009'd then delete ;
 run;
-/*delete one of the claims from the "indic = 1" beneficiary. 
-Took the one with the longest length of stay.*/
+
+data snf1d;
+set snf1c zztest6;
+run;
+/*delete one of the claims from the "indic = 1" beneficiary.
+Took the one with the longest length of stay.
+Add costs first so have total stay cost for this stay*/
+
+proc sort data=snf1d;
+by bene_id admsn_dt;
+run;
 
 data snf2;
-	set snf1c;
+	set snf1d;
 	by bene_id;
 	retain i;
 	i = i + 1;
@@ -351,7 +420,7 @@ run;
 proc freq data=snf2;
 	table i;
 run;
-/*maximum of 12 admissions to the SNF*/
+/*maximum of 12 claims to the SNF*/
 
 proc transpose data=snf2 prefix=snf_start out=start_dates_snf;
 by bene_id;
@@ -389,6 +458,10 @@ proc transpose data=snf2 prefix = snf_death out = death_snf;
 by bene_id;
 var death;
 run;
+proc transpose data=snf2 prefix = snf_dis_dstn out = dis_dstn_snf;
+by bene_id;
+var DSCHRG_DSTNTN_CD;
+run;
 proc transpose data=snf2 prefix = snf_cost out = cost_snf;
 by bene_id;
 var MDCR_PMT_AMT;
@@ -397,7 +470,8 @@ run;
 
 
 data snf3;
-	merge start_dates_snf end_dates_snf prim_icd_snf sec_icd_snf third_icd_snf four_icd_snf five_icd_snf six_icd_snf cost_snf death_snf;
+	merge start_dates_snf end_dates_snf prim_icd_snf sec_icd_snf third_icd_snf four_icd_snf 
+        five_icd_snf six_icd_snf cost_snf death_snf dis_dstn_snf;
 	by bene_id;
 	drop _NAME_ _LABEL_;
 run;
@@ -405,7 +479,7 @@ run;
 %macro resort;
 	%do i = 1 %to 12;
 		data resort&i;
-			set snf3 (keep = bene_id snf_start&i snf_end&i snf_prim_icd&i snf_icd2_&i snf_icd3_&i snf_icd4_&i snf_icd5_&i snf_icd6_&i snf_cost&i snf_death&i);
+			set snf3 (keep = bene_id snf_start&i snf_end&i snf_prim_icd&i snf_icd2_&i snf_icd3_&i snf_icd4_&i snf_icd5_&i snf_icd6_&i snf_cost&i snf_death&i snf_dis_dstn&i);
 			label snf_start&i = "Admission (Stay &i)";
 			label snf_end&i = "Discharge (Stay &i)";
 			label snf_prim_icd&i = "Primary ICD (Stay &i)";
@@ -416,6 +490,7 @@ run;
 			label snf_icd6_&i = "ICD9 Diagnosis Code VI (Stay &i)";
 			label snf_cost&i = "Total Cost during Stay (Stay &i)";
 			label snf_death&i = "Death during Visit (Stay &i)";
+			label snf_dis_dstn&i = "Discharge destination code (Stay &i)";
 		run;
 	%end;
 	data snf4;
@@ -575,16 +650,11 @@ data ip_snf2;
 set ip_snf1;
 retain snf_adm_days snf_adm_cnt snf_cost; 
 if snf_adm_ind=1 then do;
-   /****I don't think you can just assign missing end dates to be the end of the sample
-   claims dates, need to check vs next snf claim start date to see if they are continuous
-   stays*******************/
-   if snf_start1 ~=. and snf_end1 = . then snf_end1 = '31DEC2010'd;
    snf_adm_days=snf_end1-snf_start1 + 1; /*initialize for 1st stay*/
    snf_adm_cnt=1;
    if snf_death1=1 then snf_death=1;
    snf_cost=snf_cost1;
    %do i=2 %to 12;
-   		 if snf_start&i~=. and snf_end&i = . then snf_end&i = '31DEC2010'd;
          if snf_start&i~=. then snf_adm_days=snf_adm_days + (snf_end&i-snf_start&i) + 1;
          if snf_start&i~=. then snf_adm_cnt=snf_adm_cnt+1;
          if snf_death&i=1 then snf_death=1;
