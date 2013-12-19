@@ -733,7 +733,7 @@ if gndr_cd=1 then female=0;
 if gndr_cd=2 then female=1;
 label female = "Female";
 /*age*/
-age_at_enr = (start - dob_dt) / 365.25;
+age_at_enr = floor((start - dob_dt) / 365.25);
 label age_at_enr = "Age at 1st Hospice Enrollment";
 /*race*/
 re_white = 0;
@@ -805,10 +805,8 @@ proc export data=ccw.hs_stays_cleaned
 observations from the clean hospice claims dataset*/
 /***************************************************************/
 
-/*note this variable will be replaced with one using the mbs DOB*/
 data hs_stays;
 set ccw.hs_stays_cleaned;
-age_at_enr = floor(age_at_enr/365.5);
 run;
 
 /*this final sample is created using the mbs files in the code MB12mosforward.sas*/
