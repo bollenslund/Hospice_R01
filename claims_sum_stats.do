@@ -173,6 +173,55 @@ local opvars2  op_visit op_cost op_ed_ind op_ed_count
 	sdec(3,0,0,0) addtable
 	
 **********************************************************
+******** ED Use - combined IP and OP claims  *************
+**********************************************************	
+tab ip_op_ed_cnt, missing
+
+gen byte ip_op_ed_ind=0
+replace ip_op_ed_ind=1 if ip_op_ed_cnt>0 & ip_op_ed_cnt!=.
+tab ip_op_ed_ind, missing
+
+mat ed = J(6,5,.)
+//first two rows, whole sample
+sum ip_op_ed_ind, detail
+ mat  ed[2,1]=r(mean)
+ mat  ed[2,2]=r(p50) 
+ mat  ed[2,3]=r(min)
+ mat  ed[2,4]=r(max) 
+ mat  ed[2,5]=r(N)
+
+sum ip_op_ed_cnt, detail
+ mat  ed[3,1]=r(mean)
+ mat  ed[3,2]=r(p50) 
+ mat  ed[3,3]=r(min)
+ mat  ed[3,4]=r(max) 
+ mat  ed[3,5]=r(N)
+ 
+//rows 3 and 4, obs who disenrolled
+sum ip_op_ed_ind if disenr==1, detail
+ mat  ed[5,1]=r(mean)
+ mat  ed[5,2]=r(p50) 
+ mat  ed[5,3]=r(min)
+ mat  ed[5,4]=r(max) 
+ mat  ed[5,5]=r(N) 
+
+sum ip_op_ed_cnt if disenr==1, detail
+ mat  ed[6,1]=r(mean)
+ mat  ed[6,2]=r(p50) 
+ mat  ed[6,3]=r(min)
+ mat  ed[6,4]=r(max) 
+ mat  ed[6,5]=r(N) 
+
+mat list ed
+
+ frmttable using "J:\Geriatrics\Geri\Hospice Project\output\claims_sum_stats", ///
+	statmat(ed) title("ED Use - across IP and OP claims") ///
+	ctitle("","Mean", "Median", "Min", "Max", "N") ///
+	rtitle("Full sample" \ "Any ED use?" \ "Count of ED visits" \ ///
+		"Obs who disenrolled from hospice" \ "Any ED use?" \ "Count of ED visits") ///
+	sdec(3,0,0,0,0) addtable
+ 
+**********************************************************
 ******** DME, HH and Carrier claims payments *************
 **********************************************************	
 
