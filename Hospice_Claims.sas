@@ -722,7 +722,9 @@ proc freq;
 table disenr /missprint;
 run;
 
-/*create clean gender, age and race, ethnicity variables*/
+/*create clean gender, age and race, ethnicity variables
+These variables will be replaced using the mbs dataset, just here to look
+at demographics before merge with mbs is complete*/
 data clean_1;
 set disenroll_2;
 /*female*/
@@ -800,10 +802,10 @@ proc export data=ccw.hs_stays_cleaned
 
 /***********************Changing Sample ************************/
 /*Use the master beneficiary sample selection criteria to remove
-observations from the clean hospice claims dataset
-This brings the max number of stays / beneficiary down to 14
-so drop unneeded variables*/
+observations from the clean hospice claims dataset*/
 /***************************************************************/
+
+/*note this variable will be replaced with one using the mbs DOB*/
 data hs_stays;
 set ccw.hs_stays_cleaned;
 age_at_enr = floor(age_at_enr/365.5);
