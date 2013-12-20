@@ -44,26 +44,29 @@ local demo female age_at_enr re_white re_black re_asian re_hispanic ///
 local hsvars totalcost total_los stay_los disenr count_hs_stays total_650 total_651 total_652 ///
  total_655 total_656 total_657
  
-mat mean_hs = J(11,2,.)
+mat mean_hs = J(11,5,.)
  local j=1
  foreach v in `hsvars' {
  qui sum(`v'), detail
  mat mean_hs[`j',1]=r(mean)
  mat mean_hs[`j',2]=r(p50)
+  mat mean_hs[`j',3]=r(min)
+ mat mean_hs[`j',4]=r(max) 
+ mat mean_hs[`j',5]=r(N)
  local j=`j'+1
  }
  
 mat list mean_hs
  frmttable using "J:\Geriatrics\Geri\Hospice Project\output\claims_sum_stats", ///
 	statmat(mean_hs) title("Means and medians of hospice variables from hospice claims") ///
-	ctitle("" , "Mean" , "Median") ///
+	ctitle("" , "Mean" , "Median", "Min", "Max", "N") ///
 	rtitle("Total Hospice Cost (all stays)" \ "Total LOS (all stays)" \ "LOS First Stay" \ ///
 	"Disenrollment" \ "Number of Hospice Stays" \ "Revenue days - Hospice General Services" \ ///
 	"Revenue days - Routine Home Care" \ ///
 	"Revenue days - Continuous Home Care" \ "Revenue days - Inpatient Hospice Care" \ ///
 	"Revenue days - General Inpatient Care under Hospice services (non-Respite)" \ ///
 	"Total Number of Procedures in Hospice Physician Services") ///
-	sdec(0,0 \ 2,0 \ 2,0 \ 2,0 \ 2,0 \  2,0 \  2,0 \  2,0 \  2,0 \  2,0 \  2,0) addtable
+	sdec(2,0,0,0,0) addtable
 	
 
 **********************************************************
