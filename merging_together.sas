@@ -287,3 +287,9 @@ run;
 proc freq data=hospice3a;
 table hospice_death;
 run;
+
+/*means for hospice*/
+
+proc means data=ccw.final1;
+var disenr;
+run;
