@@ -56,11 +56,11 @@ run;
 
 /*assigns the date indicator for exclusion to all claims for the bid*/
 proc sql;
-        create table hospice_base3
-          as select *
-            from hospice_base2 a
-                  left join indicator1 b
-                          on a.bene_id = b.bene_id;
+	create table hospice_base3
+    as select *
+    from hospice_base2 a
+    left join indicator1 b
+    on a.bene_id = b.bene_id;
 quit;
 proc freq data=hospice_base3;
         table indic2;

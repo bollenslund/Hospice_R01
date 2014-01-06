@@ -1,39 +1,15 @@
-/*
-Code merges the individual clean claims files together. Files merged are:
-1. ccw.final_hs - hospice stay data, limited to sample from mbs processing
-2. ccw.mb_final_cc - demo, cc and other information from master beneficiary files
-3. cw.ip_snf - inpatient and snf claims
-4. ccw.outpat_fin - outpatient claims
-5. ccw.dmehhacarr - costs from dme, hh and carrier claims
-
-Final data files saved in sas as ccw.final and in Stata as all_claims_clean.dta
-
-*/
-
-libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
-libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';data final_hs;
-
-/*drop unneeded variables from hospice dataset*/
 data final_hs;
 set ccw.final_hs;
-drop BENE_RACE_CD re_white re_black re_other re_asian re_hispanic re_na re_unknown 
-female BENE_CNTY_CD BENE_STATE_CD BENE_MLG_CNTCT_ZIP_CD DOB_DT age_at_enr;
+drop BENE_RACE_CD re_white re_black re_other re_asian re_hispanic re_na re_unknown female BENE_CNTY_CD BENE_STATE_CD BENE_MLG_CNTCT_ZIP_CD DOB_DT;
 run;
 
 proc freq data=final_hs;
 table start21;
 run;
 
-/*check that race/ethnicity from mbs dataset is complete, no missing values*/
-proc freq data=ccw.mb_final_cc;
-table BENE_RACE_CD /missprint;
-run;
-
-/*code race/ethnicity indicator variables from mbs file*/
 data final_mb_cc;
 set ccw.mb_final_cc;
-drop lengthmedi lengthmo allmedistatus1 allhmostatus1 allmedistatus2 allhmostatus2 
-allmedistatus3 allhmostatus3;
+drop lengthmedi lengthmo allmedistatus1 allhmostatus1 allmedistatus2 allhmostatus2 allmedistatus3 allhmostatus3;
 re_white = 0; re_black = 0; re_other = 0; re_asian = 0; re_hispanic = 0; re_na = 0; re_unknown = 0;
 if BENE_RACE_CD = 1 then re_white = 1;
 if BENE_RACE_CD = 2 then re_black = 1;
@@ -51,14 +27,12 @@ label re_na = "Native American race / ethnicity";
 label re_unknown = "Unknown race / ethnicity";
 run;
 
-/*drop unneeded variables from inpatient and snf dataset*/
 data final_inpat;
 set ccw.ip_snf;
 drop BENE_ENROLLMT_REF_YR FIVE_PERCENT_FLAG ENHANCED_FIVE_PERCENT_FLAG COVSTART CRNT_BIC_CD 
 STATE_CODE BENE_COUNTY_CD BENE_ZIP_CD BENE_AGE_AT_END_REF_YR BENE_BIRTH_DT BENE_DEATH_DT NDI_DEATH_DT BENE_SEX_IDENT_CD BENE_RACE_CD BENE_VALID_DEATH_DT_SW start end;
 run;
 
-/*bring in outpatient, dme hha, carrier datasets*/
 data final_outpat;
 set ccw.outpat_fin;
 run;
@@ -68,7 +42,6 @@ set ccw.dmehhacarr;
 drop clm_id;
 run;
 
-/*merge hospice with mb_cc information*/
 proc sql;
 create table final
 as select *
@@ -77,40 +50,8 @@ left join final_mb_cc b
 on a.bene_id = b.bene_id;
 quit;
 
-/*compare gender from hs claims to gender from mbs file
-they are they same so drop the one from claims and create
-an indicator variable, female, from mbs variable*/
-proc freq;
-table BENE_SEX_IDENT_CD*GNDR_CD /missprint;
-run;
-
-/*recode gender and age at enrollment variables using mbs information
-add some additional labels*/
-data final_gender;
-set final(drop=GNDR_CD);
-female=.;
-if BENE_SEX_IDENT_CD=1 then female=0;
-if BENE_SEX_IDENT_CD=2 then female=1;
-age_at_enr = floor((start - BENE_BIRTH_DT) / 365.25);
-label female="Female indicator";
-label age_at_enr = "Age at 1st Hospice Enrollment";
-label total_los = "Total days in hospice, across all stays";
-label hs1_death = "Died in hospice during Stay 1";
-label disenr = "Disenrollment from hospice - Stay 1";
-run;
-
-proc freq;
-table age_at_enr;
-run;
-
-/*look at discharge destination codes from 1st hospice stay*/
-proc freq data=final_gender;
-table discharge;
-run;
-
-/*check of death dates in mbs vs hs claims vs discharge codes in hospice claims*/
 data test;
-set final_gender;
+set final;
 if discharge = 40 then do;
 ddiff40_1 = end - NDI_DEATH_DT;
 if NDI_DEATH_DT = . then do;
@@ -131,7 +72,7 @@ end;
 end;
 run;
 proc freq data=test;
-table ddiff40_1 ddiff41_1 ddiff42_1 /missprint;
+table ddiff40_1 ddiff41_1 ddiff42_1;
 run;
 /*I did separately to see if any one of the discharge codes lead to more
 discrepancy in the death date. Turns out, death dates do not entirely correlate
@@ -157,11 +98,11 @@ run;
 not come today to the office, so I didn't receive any update from her. I'll be checking my email during break. Feel free to email
 or text me if you have any follow up questions.*/
 
-/*bring in IP and SNF information*/
+
 proc sql;
 create table final1
 as select *
-from final_gender a
+from final a
 left join final_inpat b
 on a.bene_id = b.bene_id;
 quit;
@@ -176,7 +117,6 @@ proc freq data=final1;
 	table IP_death1;
 RUN;
 
-/*merge in outpatient information*/
 proc sql;
 create table final2
 as select *
@@ -185,7 +125,6 @@ left join final_outpat b
 on a.bene_id = b.bene_id;
 quit;
 
-/*merge in dme, hha and carrier costs*/
 proc sql;
 create table final3
 as select *
@@ -204,21 +143,12 @@ proc freq data=final3;
 table ip_op_ed_cnt;
 run;
 
-data ccw.final(compress=yes);
+data ccw.final;
 set final3;
 run;
 
-/*****************************************************************/
-/*Output to stata for sum stats*/
-/*****************************************************************/
-proc export data=ccw.final
-	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\all_claims_clean.dta'
-	replace;
-	run;
 
-/*****************************************************************/
 /*Look at the race variable*/
-/*****************************************************************/
 proc freq data=final_hs;
 table BENE_RACE_CD;
 run;
@@ -260,3 +190,100 @@ data ccw.race;
 set zzzztest;
 run;
 /*rebecca please take a look at this*/
+
+/*negative costs*/
+
+data costs;
+set ccw.final;
+if ip_tot_cost < 0;
+run;
+
+data medpar;
+	set merged.medpar_all_file;
+run;
+
+data costs1;
+set medpar;
+if bene_id = 'ZZZZZZZ3IOZkyyk' or bene_id = 'ZZZZZZZ3OZIIOOu' or bene_id = 'ZZZZZZZ3pu9uyyy' or bene_id = 'ZZZZZZZOZuI3puu' or bene_id = 'ZZZZZZZOypO9pOI' or bene_id = 'ZZZZZZZypZZ9ku4';
+run;
+
+proc contents data=costs1 varnum;
+run;
+
+proc sort data=costs1;
+by BENE_ID ADMSN_DT;
+run;
+
+proc sql;
+create table costs2
+as select a.*, b.start, b.end
+from costs1 a
+left join ccw.for_medpar b
+on a.bene_id = b.bene_id;
+run;
+
+data costs2;
+set costs2;
+if admsn_dt >= start;
+run;
+
+proc freq data=base_cost;
+table CLM_PMT_AMT;
+run;
+
+data costs_out;
+set base_cost1;
+if inhospice_cost1 < 0 or posthospice_cost1 < 0;
+run;
+
+/** changing those with DEC 31st Discharge date and coded still patient when discharged*/
+
+data hospice1;
+set ccw.final;
+if end = '31DEC2010'd then do;
+if discharge = 30 then disenr = 0;
+end;
+run;
+
+proc freq data=ccw.final;
+table disenr;
+run;
+proc freq data=hospice1;
+table disenr;
+run;
+
+data ccw.final1;
+set hospice1;
+run;
+
+data hospice3;
+set ccw.final1;
+if discharge = 1;
+run;
+
+proc freq data=hospice3;
+table count_hs_stays;
+run;
+proc freq data=ccw.final1;
+table count_hs_stays;
+run;
+
+data hospice3a;
+set hospice3;
+if count_hs_stays > 1 and hs1_death = 0;
+hospice_death = 0;
+run;
+
+%macro death;
+%do i = 2 %to 21;
+	data hospice3a;
+	set hospice3a;
+	if discharge&i = 40 or discharge&i = 41 or discharge&i = 42 then hospice_death = 1;
+	run;
+%end;
+%mend;
+%death;
+
+proc freq data=hospice3a;
+table hospice_death;
+run;
