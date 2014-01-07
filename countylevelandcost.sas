@@ -1,4 +1,5 @@
 libname working 'J:\Geriatrics\Geri\Hospice Project\Hospice\Reference';
+libname costs 'N:\Documents\Downloads\Melissa\Hospice_Cost_Data\data';
 
 data ahrf;
 set working.ahrf12;
@@ -19,7 +20,30 @@ data ccw.ahrf;
 set ahrf1;
 run;
 
-PROC IMPORT OUT= WORK.HospiceCosts
-            DATAFILE= "N:\Documents\Downloads\Melissa\Hospice_Cost_Data\data.xls" 
-            DBMS=excelcs REPLACE;
-RUN;
+proc contents data=ccw.final1 varnum;
+run;
+
+/******************** COST INFORMATION ***********************/
+
+data s1pt1;
+set costs.s1pt1;
+run;
+data s1pt2;
+set costs.s1pt2;
+run;
+data s1pt3;
+set costs.s1pt3;
+run;
+data s1pt4;
+set costs.s1pt4;
+run;
+data a0;
+set costs.a0; 
+run;
+data d;
+set costs.d;
+run;
+data g2;
+set costs.g2;
+run;
+
