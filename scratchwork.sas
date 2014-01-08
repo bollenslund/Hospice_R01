@@ -44,7 +44,19 @@ title "Death in other departments. Everyone";
 proc freq data=ccw.final1;
 table hosp_death snf_death;
 run;
+title "Those still discharged as death (40-43). They usually have a second Hospice date";
+proc freq data=disenroll;
+table discharge;
+run;
 ods rtf close;
+
+proc freq data=disenroll;
+table discharge;
+run;
+data discrep;
+set disenroll;
+if discharge >= 40 and discharge <50;
+run;
 
 data discrepancy;
 set ccw.final1;
@@ -99,4 +111,14 @@ if IP_death2 = 1 then do;
 datedif1 = BENE_DEATH_DT - IP_end2;
 datedif2 = BENE_DEATH_DT - end;
 end;
+run;
+
+data final;
+set ccw.final;
+run;
+
+data final1;
+set final;
+rename start = start1;
+rename end = end1;
 run;
