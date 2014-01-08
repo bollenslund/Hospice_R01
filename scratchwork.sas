@@ -1,4 +1,6 @@
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
+libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10'; 
+
 
 data hospice;
 set ccw.final1;
@@ -49,6 +51,19 @@ proc freq data=disenroll;
 table discharge;
 run;
 ods rtf close;
+data disenroll;
+set disenroll;
+i = 1;
+if start2 = . then i = 0;
+run;
+proc freq data=disenroll;
+table i*discharge;
+run;
+
+data disenroll1;
+set disenroll;
+if i = 0 and discharge = 30;
+run;
 
 proc freq data=disenroll;
 table discharge;
@@ -121,4 +136,33 @@ data final1;
 set final;
 rename start = start1;
 rename end = end1;
+rename totalcost = totalcost1;
+rename provider = provider1;
+rename provider_i = provider_i_1;
+rename discharge = discharge1;
+rename discharge_i = discharge_i_1;
+rename icd_1 = icd_1_1;
+rename icd_2 = icd_2_1;
+rename icd_3 = icd_3_1;
+rename icd_4 = icd_4_1;
+rename icd_5 = icd_5_1;
+drop stay_los primary_icd primary_icd2 primary_icd3 primary_icd4 primary_icd5;
+run;
+
+data zzztest;
+set merged.Hospice_base_claims_j;
+run;
+data zzztest1;
+set zzztest;
+if bene_id = 'ZZZZZZZk3k4uu94' or 
+bene_id = 'ZZZZZZZk3k9O34p' or 
+bene_id = 'ZZZZZZZk3yO44yI' or 
+bene_id = 'ZZZZZZZk4IIky9y' or 
+bene_id = 'ZZZZZZZk4OZ9kk4' or 
+bene_id = 'ZZZZZZZk39ky4O3' or 
+bene_id = 'ZZZZZZZk39k93py' or 
+bene_id = 'ZZZZZZZZOOZOpu9';
+run;
+proc sort data=zzztest1;
+by bene_id CLM_FROM_DT;
 run;
