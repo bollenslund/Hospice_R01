@@ -64,6 +64,23 @@ data disenroll1;
 set disenroll;
 if i = 0 and discharge = 30;
 run;
+data disenroll2;
+set disenroll;
+if i = 1 and (discharge = 40|discharge = 41|discharge = 42);
+run;
+data disenroll3;
+set disenroll2 (keep = bene_id start start2 start3 end end2-end3 discharge2 BENE_DEATH_DT);
+if end2 = '31DEC2010'd then delete;
+if end3 = '31DEC2010'd then delete;
+daysbtwn = start2 - end + 1;
+run;
+proc freq data=disenroll3;
+where end3 = .;
+table discharge2;
+run;
+proc means data=disenroll3 mean median ;
+var daysbtwn;
+run;
 
 proc freq data=disenroll;
 table discharge;
@@ -154,14 +171,14 @@ set merged.Hospice_base_claims_j;
 run;
 data zzztest1;
 set zzztest;
-if bene_id = 'ZZZZZZZk3k4uu94' or 
-bene_id = 'ZZZZZZZk3k9O34p' or 
-bene_id = 'ZZZZZZZk3yO44yI' or 
-bene_id = 'ZZZZZZZk4IIky9y' or 
-bene_id = 'ZZZZZZZk4OZ9kk4' or 
-bene_id = 'ZZZZZZZk39ky4O3' or 
-bene_id = 'ZZZZZZZk39k93py' or 
-bene_id = 'ZZZZZZZZOOZOpu9';
+if bene_id = 'ZZZZZZZ39944OZu' or 
+bene_id = 'ZZZZZZZ3uI93yI3' or 
+bene_id = 'ZZZZZZZIZ9Z43ZO' or 
+bene_id = 'ZZZZZZZIZuOkIII' or 
+bene_id = 'ZZZZZZZOykOyO94' or 
+bene_id = 'ZZZZZZZZZpOI34u' or 
+bene_id = 'ZZZZZZZZppkyIkZ' or 
+bene_id = 'ZZZZZZZkZyp39ZO';
 run;
 proc sort data=zzztest1;
 by bene_id CLM_FROM_DT;
