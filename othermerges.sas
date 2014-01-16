@@ -1,4 +1,4 @@
-libname costs '\\home\users$\leee20\Documents\Downloads\Melissa\Hospice_Cost_Data\data';
+libname costs 'J:\Geriatrics\Geri\Hospice Project\Hospice\Costs\data';
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 libname ref 'J:\Geriatrics\Geri\Hospice Project\Hospice\Reference';
 
@@ -82,7 +82,7 @@ by zipcode zipaddlowsec;
 run;
 data test;
 set zip;
-if zipcode = 381501;
+if zipcode = 77117;
 run;
 proc sort data=ziplist2 out=ziplist3 nodupkey;
 by zipcode;
@@ -136,3 +136,13 @@ proc freq data=hospice_add;
 table RPT_REC_NUM;
 run;
 /*only 49% of the people in the hospice files match the people from the ahrf/cost files*/
+
+data test;
+set Hospicecosts20101;
+if PRVDR_NUM = 101539 or PRVDR_NUM = 451705;
+run;
+/*a value exists here. May be something wrong with the original coding*/
+data test;
+set Hospicecosts20103;
+if RPT_REC_NUM = 25548;
+run;
