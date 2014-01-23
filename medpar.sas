@@ -289,6 +289,50 @@ data ccw.ip_claims_clean;
 run;
 
 /*************************************************************************/
+/*Get count of hospital admissions 12 months prior to first hospice enrollment*/
+/*************************************************************************/
+
+/*Get list of IP claims in the 12 months pre-enrollment*/
+
+data admit_pre1;
+	set medpar1;
+	if ( start-365 <= ADMSN_DT < start);
+run;
+
+proc freq; table SS_LS_SNF_IND_CD;
+run;
+
+data admit_pre2;
+	set admit_pre1;
+	if SS_LS_SNF_IND_CD ~= 'N';
+run;
+
+proc sort data=admit_pre2;
+by bene_id ADMSN_DT;
+run;
+
+/*add count variable by beneficiary*/
+data admit_pre3;
+	set admit_pre2;
+	by bene_id;
+	retain k;
+	k = k + 1;
+	if first.bene_id then k = 1;
+run;
+
+data admit_pre4;
+set admit_pre3;
+	by bene_id;
+	if last.bene_id;
+rename k=admit_pre12m;
+label admit_pre12m="Count hospital admissions 12m pre enrollment";
+run;
+
+proc freq data=admit_pre4;
+table admit_pre12m;
+run;
+
+/*************************************************************************/
 /*    Process skilled nursing facility (SNF) claims                      */
 /*************************************************************************/
 
@@ -521,9 +565,24 @@ left join ccw.ip_claims_clean b
 on a.bene_id=b.bene_id;
 quit;
 
+/*merge in 12 month pre-enrollment admissions count into hospice/ip dataset*/
+proc sql;
+create table ip_sample_a as select
+a.*,coalesce(b.admit_pre12m, 0) as admit_pre12m from
+ip_sample a
+left join
+admit_pre4 b
+on a.bene_id=b.bene_id;
+quit;
+
+proc freq ;
+table admit_pre12m;
+run;
+
+
 /*create / initialize variables*/
 data ip_sample_1;
-set ip_sample;
+set ip_sample_a;
 /*hospital ip admission variables*/
 hosp_adm_ind=0;                          /*hosp admission indicator*/
 if IP_start1~=. then hosp_adm_ind=1;
@@ -598,7 +657,8 @@ proc freq data=ip_sample_3;
 table hosp_adm_ind*hosp_adm_days
 ip_ed_visit_ind*ip_ed_visit_cnt
 icu_stay_ind*icu_stay_cnt
-hosp_adm_ind*hosp_death;
+hosp_adm_ind*hosp_death
+admit_pre12m;
 run;
 
 /*save dataset*/
