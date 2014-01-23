@@ -1,7 +1,7 @@
 libname working 'J:\Geriatrics\Geri\Hospice Project\Hospice\Reference';
 libname costs 'N:\Documents\Downloads\Melissa\Hospice_Cost_Data\data';
 
-data ahrf;
+data ahrf_raw;
 set working.ahrf12;
 run;
 
@@ -11,13 +11,23 @@ proc contents data=ahrf varnum;
 run;
 ods rtf close;
 
-data ahrf1;
-set ahrf (keep = f00002 f00005 f00008 f04437 f00011 f00012 f04439 f04440 f00023 f0002003 f0892110 f0892109 f0892108 f0892107 f0892106 f0892105 f0892100 f1404910 f1404909 f1404908 f1404907
-f1404906 f1404905 f0978110 f0978109 f0978108 f0978107 f0978106 f0978105  f0978100);
+data ahrf_raw1;
+set ahrf_raw (keep = f00002 f00008 f13156 f04437 f04439 f04440 f00023 f0002003 f0892109 f1404909 f0978109);
+rename f00002 = fips_stat_county;
+rename f00008 = state;
+rename f04437 = county_state;
+rename f04439 = cens_reg_cd;
+rename f04440 = cens_div_cd;
+rename f00023 = fed_reg_cd;
+rename f0002003 = urban_cd;
+rename f0892109 = beds_2009;
+rename f1404909 = nursing_beds_2009;
+rename f0978109 = per_cap_inc_2009;
+rename f13156 = SSA_stat_County;
 run;
 
 data ccw.ahrf;
-set ahrf1;
+set ahrf_raw1;
 run;
 
 proc contents data=ccw.final1 varnum;
