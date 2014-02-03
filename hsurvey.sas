@@ -1,12 +1,11 @@
 libname melissa 'J:\Geriatrics\Geri\Hospice Project';
-
+libname working 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
 proc contents data=melissa.hsurvey_r01 out=hsurvey;
 run;
 
 proc export data=hsurvey outfile = '\\home\users$\leee20\Documents\Downloads\Melissa\hsurvey_varlist.xls' dbms = excelcs replace;
 run;
-
 data hsurvey_r01;
 set melissa.hsurvey_r01;
 drop Accred_08
@@ -211,7 +210,6 @@ pct_asian_empl
 pct_asst_livg
 pct_black_empl
 pct_hisp_empl
-pct_home_hos
 pct_indian_empl
 pct_multrac_empl
 pct_white_empl
@@ -231,4 +229,8 @@ zipcodemerge
 run;
 
 proc contents data=melissa.hsurvey_r01 varnum;
+run;
+
+data working.hsurvey;
+set hsurvey_r01;
 run;
