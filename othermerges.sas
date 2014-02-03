@@ -41,6 +41,7 @@ quit;
 
 data ccw.final1;
 set hosp_ahrf2;
+drop countynum1 statenum1;
 run;
 
 ods rtf body = "\\home\users$\leee20\Documents\Downloads\Melissa\newvar.rtf";
@@ -56,7 +57,16 @@ table (CC_GRP_1-CC_GRP_17 Dx_count TOT_GRP charlson_index ),(n mean min max medi
 run;
 title "County Group information";
 proc tabulate data=hosp_ahrf2;
-var beds_2009 nursing_beds_2009 per_cap_inc_2009;
-table (beds_2009 nursing_beds_2009 per_cap_inc_2009),(n mean min max median);
+var beds_2009 nursing_beds_2009 per_cap_inc_2009 urban_cd;
+table (beds_2009 nursing_beds_2009 per_cap_inc_2009 urban_cd),(n mean min max median);
 run;
 ods rtf close;
+
+data hosp_ahrf3;
+set hosp_ahrf2;
+if per_cap_inc_2009 = 0;
+run;
+
+proc sort data=ahrf out=sort;
+by county_state;
+run;

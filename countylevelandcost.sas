@@ -1,5 +1,6 @@
 libname working 'J:\Geriatrics\Geri\Hospice Project\Hospice\Reference';
 libname costs 'N:\Documents\Downloads\Melissa\Hospice_Cost_Data\data';
+libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
 data ahrf_raw;
 set working.ahrf12;
@@ -11,6 +12,13 @@ proc contents data=ahrf varnum;
 run;
 ods rtf close;
 
+proc freq data = ahrf_raw;
+table f0002003;
+run;
+proc freq data = ccw.final1;
+table urban_cd;
+run;
+
 data ahrf_raw1;
 set ahrf_raw (keep = f00002 f00008 f13156 f04437 f04439 f04440 f00023 f0002003 f0892109 f1404909 f0978109);
 rename f00002 = fips_stat_county;
@@ -19,11 +27,14 @@ rename f04437 = county_state;
 rename f04439 = cens_reg_cd;
 rename f04440 = cens_div_cd;
 rename f00023 = fed_reg_cd;
-rename f0002003 = urban_cd;
 rename f0892109 = beds_2009;
 rename f1404909 = nursing_beds_2009;
 rename f0978109 = per_cap_inc_2009;
 rename f13156 = SSA_stat_County;
+if f0002003 = 1|f0002003 = 2|f0002003 = 3 then urban_cd = 1;
+if f0002003 = 4|f0002003 = 5|f0002003 = 6|f0002003 = 7|f0002003 = 8|f0002003 = 9 then urban_cd = 0;
+label urban_cd = "Metro/non-Metro based on Rural/Urban Continuum Code 2003";
+drop f0002003;
 run;
 
 data ccw.ahrf;
