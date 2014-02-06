@@ -40,6 +40,26 @@ aggregated by date - costs during hospice and after hospice
 dme_hh_carr.sas
 Process remaining claim types to get aggregated costs during and after hospice
 
+merging_together.sas:
+Creates a single claims dataset with cleaned information from the
+hospice claims, mbs file, and all other claim types
+this dataset is saved as ccw.final1
+
+countylevelandcost.sas
+Starts with raw ahrf dataset, keeps only variables we need, and renames them
+for merging in to hospice datasets
+File saved is ccw.ahrf
+
+othermerges.sas    ???
+Merges ahrf dataset with claims dataset by beneficiary county / state codes
+This is not how we want to do this in the final dataset...
+
+hsurvey.sas
+Drops unneeded variables from the original hospice survey dataset received
+from Melissa in January 2014
+Saves a working copy of this hospice survey dataset as working.hsurvey
+
+
 
 
 
