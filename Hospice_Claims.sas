@@ -753,7 +753,6 @@ if count_hs_stays>1 then disenr=1;
 if (count_hs_stays=1 and hs1_death=1) then disenr=0;
 if (count_hs_stays=1 and hs1_death=0) then disenr=1;
 run;
-
 proc freq;
 table disenr /missprint;
 run;

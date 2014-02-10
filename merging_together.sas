@@ -133,6 +133,24 @@ set final;
 if bene_id = 'ZZZZZZZOyZuO9O3';
 run;
 
+data final;
+set final;
+if disenr = 1 then do;
+time_disenr_to_death = dod_clean - end + 1;
+end;
+if disenr = 0 then time_disenr_to_death = 0;
+if time_disenr_to_death = . then time_disenr_to_death = 0;
+run;
+
+data zzztest;
+set final;
+if time_disenr_to_death < 0;
+run;
+
+proc freq data=final;
+table time_disenr_to_death;
+run;
+
 /********************************************************************/
 /******** Continue merging datasets                     *************/
 /********************************************************************/
