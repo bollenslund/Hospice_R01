@@ -27,6 +27,107 @@ libname costs 'N:\Documents\Downloads\Melissa\Hospice_Cost_Data\data';
 data work.hospice_base;
         set merged.hospice_base_claims_j;
 run;        
+/*all hopsices from our claims data*/
+proc freq data=hospice_base;
+	table PRVDR_NUM / out=providers;
+run;	
+data providers1;
+set providers;
+pos1 = PRVDR_NUM + 0;
+x = substr(PRVDR_NUM, 3,1);
+y = substr(PRVDR_NUM, 4,1);
+run;
+proc freq data=providers1;
+table x y;
+run;
+/*I think this in itself shows that all of the Provider IDs are 
+in fact Hospice IDs. Not Hospital IDs. 
+
+/*all active hospices 2008*/
+data activehospice;
+set hospices.active08;
+pos1 = PROVNO + 0;
+run;
+data activehospice1;
+set activehospice (keep = NAME pos1);
+allhospice_i = 1;
+run;
+/*All Hospices from the Survey*/
+data survey_indic;
+set ccw.hsurvey_total (keep = pos1);
+i = 1;
+run;
+/*All Hospices in the Cost Database*/
+data cost_ind;
+set costs.a0 (keep = pid);
+z = 1;
+pos1 = pid;
+run;
+proc sort data=cost_ind nodupkey;
+by pos1;
+run;
+data cost_ind1;
+set cost_ind;
+drop pid;
+run;
+/*relative to the Hospice Claims Database*/
+proc sql;
+create table provider_test
+as select a.*, b.i
+from providers1 a
+left join survey_indic b
+on a.pos1 = b.pos1;
+run;
+proc sql;
+create table provider_test1
+as select *
+from provider_test a
+left join activehospice1 b
+on a.pos1 = b.pos1;
+quit;
+proc sql;
+create table provider_test2
+as select *
+from provider_test a
+left join cost_ind1 b
+on a.pos1 = b.pos1;
+quit;
+data provider_test3;
+set provider_test2;
+label z = "Indicator: Claims that correlate to hospices that appear in the Cost Database";
+label allhospice_i = "Indicator: Claims that correlate to hospices that appear in ANY active hospice";
+label i = "Indicator: Claims that are a part of the 591 Surveyed";
+if z = 1 or allhospice_i = 1 or i = 1 then anyhospice = 1;
+label anyhospice = "Indicator: Those that appeared in at least one of the three databases";
+run;
+proc freq data=provider_test3;
+table allhospice_i z anyhospice;
+run;
+proc export data=provider_test3 outfile = '\\home\users$\leee20\Documents\Downloads\Melissa\provider_compared.xls' dbms = excelcs replace label;
+run;
+proc export data=missing_providers outfile = '\\home\users$\leee20\Documents\Downloads\Melissa\surveyed_not_in_claims.xls' dbms = excelcs replace;
+run;
+proc freq data=provider_test3;
+table anyhospice;
+run;
+data provider_test4;
+set provider_test3;
+if allhospice_i = . and z = 1;
+run;
+data provider_test5;
+set provider_test3;
+run;
+proc sort data=provider_test4;
+by descending COUNT;
+run;
+proc export data=provider_test4 outfile='\\home\users$\leee20\Documents\Downloads\Melissa\not_in_any_of_3_databases.xls' dbms = excelcs replace label;
+run;
+ods rtf body = "\\home\users$\leee20\Documents\Downloads\Melissa\freq_of_providers.rtf";
+title "Provider_info";
+proc freq data=provider_test3;
+table anyhospice;
+run;
+ods rtf close;
 
 /*********************************************************************/
 /*********************************************************************/
@@ -327,80 +428,68 @@ run;
 /**************************************************************/
 /**************************************************************/
 
+/*check to see if provider changes during a continuous stay
+that spans multiple claims
+provider_i is count of number of different providers for that stay
+assigns first provider id recorded for that hospice stay as the provider
+of record for the analysis*/
 proc sort data=hospice_base10 out=provider; by bene_id start; run;
-proc freq data=hospice_base;
-	table PRVDR_NUM / out=providers;
-run;	
-data providers1;
-set providers;
-pos1 = PRVDR_NUM + 0;
-x = substr(PRVDR_NUM, 3,2);
-run;
-proc freq data=providers1;
-table x;
-run;
-/*I think this in itself shows that all of the Provider IDs are 
-in fact Hospice IDs. Not Hospital IDs. */
-
-/*All Hospices from the Survey*/
-data survey_indic;
-set ccw.hsurvey_total (keep = pos1);
-i = 1;
-run;
-data hospice_base_test;
-set hospice_base;
-pos1 = PRVDR_NUM + 0;
-run;
-proc sql;
-create table hospice_base_test1
-as select a.*, b.i
-from hospice_base_test a
-left join survey_indic b
-on a.pos1 = b.pos1;
-quit;
-proc sort data=hospice_base_test1;
-by bene_id CLM_FROM_DT;
+data provider1;
+        set provider (keep = bene_id start PRVDR_NUM);
+                by bene_id start;
+                retain i;
+                        provider_num = PRVDR_NUM + 0;
+                        prov_diff = provider_num - lag(provider_num);
+                        if first.start then do;
+                        i = 1;
+                        provider = provider_num;
+                        prov_diff = 0;
+                        end;
+                        if prov_diff ~= 0 then do;
+						i = i + 1;
+						provider = provider_num;
+						end;
+                        drop PRVDR_NUM;
+                        provider_i = i;
 run;
 
-data hospice_base_test2;
-set hospice_base_test1;
-by bene_id CLM_FROM_DT;
-retain surveyed;
-if first.bene_id then do;
-if i = 1 then surveyed = 1;
-if i = . then surveyed = 0;
-end;
-if i = 1 then surveyed = 1;
+data provider2;
+set provider1;
+by bene_id start;
+if provider = . then delete;
+drop i prov_diff provider_num;
+prov_dif = provider - lag(provider);
+if first.bene_id then prov_dif = 1;
 run;
-proc freq data=hospice_base_test2;
-table surveyed;
+
+proc freq data=provider2;
+table prov_dif;
 run;
-data hospice_base_test3;
-set hospice_base_test2;
+
+data provider3;
+set provider2;
+if prov_dif = 0 then delete;
+drop prov_dif;
+run;
+
+proc transpose data=provider3 prefix=provider out=provider_id;
 by bene_id;
-if i = . then delete;
+var provider;
 run;
-proc sort data=hospice_base_test3;
-by bene_id clm_from_id pos1;
-run;
-proc sort data=hospice_base_test3 out=hospice_base_test4 nodupkey;
-by bene_id pos1;
-run;
-proc transpose data=hospice_base_test4 prefix=provider out=provider_id;
-by bene_id;
-var pos1;
-run;
-data provider_id1;
+
+data provider_id;
 set provider_id;
-if provider4~=. then provider = provider4;
-if provider3~=. and provider4 = . then provider = provider3;
-if provider2~=. and provider3 = . and provider4 = . then provider = provider2;
-if provider2=. and provider3 = . and provider4 = . then provider = provider1;
+drop _NAME_;
+label provider1 = "Provider ID (Location 1)";
+label provider2 = "Provider ID (Location 2)";
+label provider3 = "Provider ID (Location 3)";
+label provider4 = "Provider ID (Location 4)";
+label provider5 = "Provider ID (Location 5)";
+label provider6 = "Provider ID (Location 6)";
+label provider7 = "Provider ID (Location 7)";
+label provider8 = "Provider ID (Location 8)";
 run;
-data provider_id2;
-set provider_id1;
-drop provider1-provider4 _NAME_;
-run;
+
 
 /*************************************************************/
 /*************************************************************/
@@ -664,7 +753,7 @@ proc sql;
 		create table macro3a
 		as select *
 		from macro3 a
-		left join provider_id2 b
+		left join provider_id b
 		on a.bene_id = b.bene_id;
 quit;
 
@@ -693,7 +782,8 @@ data macro4;
                 label end = "End Date (Stay 1)";
 				label stay_los = "Length of Stay (Stay 1)";
                 label totalcost = "Total Cost Spent (Stay 1)";
-                label provider = "Provider ID";
+                label provider = "Provider ID during Stay (Stay 1)";
+                label provider_i = "If Greater Than 1, Provider Changes within Stay (Stay 1)";
                 label discharge = "Discharge Code (Stay 1)";
                 label discharge_i = "If Greater than 1, Discharge Codes changes with Stay (Stay 1)";
                 label primary_icd = "Primary Diagnosis Code (Stay 1)";
@@ -714,6 +804,7 @@ data macro5;
         label total_656 = "Total Days in General Inpatient Care under Hospice services (non-Respite)";
         label total_657 = "Total Number of Procedures in Hospice Physician Services";
 run;
+totalcost start end j discharge discharge_i primary_icd icd_1 icd_2 icd_3 icd_4 icd_5 indic3 stay_los
 /*create variable for total hospice length of stay*/
 data total_los;
 set macro5;

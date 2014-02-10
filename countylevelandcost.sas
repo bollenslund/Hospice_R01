@@ -20,13 +20,8 @@ table urban_cd;
 run;
 
 data ahrf_raw1;
-set ahrf_raw (keep = f00002 f00008 f13156 f04437 f04439 f04440 f00023 f0002003 f0892109 f1404909 f0978109);
-rename f00002 = fips_stat_county;
-rename f00008 = state;
+set ahrf_raw (keep = f13156 f04437 f0002003 f0892109 f1404909 f0978109);
 rename f04437 = county_state;
-rename f04439 = cens_reg_cd;
-rename f04440 = cens_div_cd;
-rename f00023 = fed_reg_cd;
 rename f0892109 = beds_2009;
 rename f1404909 = nursing_beds_2009;
 rename f0978109 = per_cap_inc_2009;

@@ -1,5 +1,5 @@
 libname melissa 'J:\Geriatrics\Geri\Hospice Project';
-libname working 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
+libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
 proc contents data=melissa.hsurvey_r01 out=hsurvey;
 run;
@@ -231,6 +231,110 @@ run;
 proc contents data=melissa.hsurvey_r01 varnum;
 run;
 
-data working.hsurvey;
+data ccw.hsurvey;
 set hsurvey_r01;
+run;
+
+proc sql;
+create table test as
+select cats(SSAstate_08, SSAcoun_08) as SSA_Hospice 
+from hsurvey_r01;
+quit;
+
+data hsurvey_r01_1;
+set hsurvey_r01;
+SSA_Hospice_Code = cat(SSAstate_08, SSAcoun_08);
+run;
+
+proc sql;
+create table hsurvey_r01_2
+as select a.*, b.county_state, b.beds_2009, b.nursing_beds_2009, b.per_cap_inc_2009, b.urban_cd
+from hsurvey_r01_1 a
+left join ccw.ahrf b
+on b.SSA_stat_County = a.SSA_Hospice_Code;
+quit;
+proc freq data=hsurvey_r01_2;
+table beds_2009;
+run;
+
+proc sort data=hsurvey_r01_2;
+by POS1;
+run;
+
+data test;
+set hsurvey_r01_2;
+diff = POS_STUDY_ID - POS1;
+run;
+proc freq data=test;
+table diff;
+run;
+/*
+data final1;
+set ccw.final1;
+stay = 1;
+if provider2 ~= . then stay = 2;
+if provider3 ~= . then stay = 3;
+run;
+proc freq data=final1;
+table stay;
+run;
+data final1_1;
+set final1;
+if stay = 1;
+run;
+data final1_2;
+set final1;
+if stay = 2;
+run;
+data final1_3;
+set final1;
+if stay = 3;
+run;
+
+proc sql;
+create table final_hsurvey1_1
+as select * 
+from final1_1 a 
+left join hsurvey_r01_2 b
+on a.provider=b.pos1;
+quit;
+proc sql;
+create table final_hsurvey1_2
+as select * 
+from final1_2 a 
+left join hsurvey_r01_2 b
+on a.provider2=b.pos1;
+quit;
+proc sql;
+create table final_hsurvey1_3
+as select * 
+from final1_3 a 
+left join hsurvey_r01_2 b
+on a.provider3=b.pos1;
+quit;
+
+proc append base=final_hsurvey1_1 data=final_hsurvey1_2;
+run;
+proc append base=final_hsurvey1_1 data=final_hsurvey1_3;
+run;
+*/
+proc sql;
+create table final_hsurvey
+as select *
+from ccw.final1 a
+left join hsurvey_r01_2 b
+on a.provider = b.POS1 
+; quit;
+
+proc freq data=final_hsurvey;
+table beds_2009;
+run;
+
+data final_hsurvey1;
+set final_hsurvey;
+if beds_2009 = .;
+run;
+
+proc sort data=final_hsurvey out=ccw.final2;
+by bene_id;
 run;

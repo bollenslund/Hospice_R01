@@ -39,7 +39,7 @@ left join ccw.Charlson b
 on a.bene_id = b.bene_id;
 quit;
 
-data ccw.final1;
+data ccw.final2;
 set hosp_ahrf2;
 drop countynum1 statenum1;
 run;

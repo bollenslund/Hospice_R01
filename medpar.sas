@@ -16,6 +16,7 @@ For SNF claims, get
 
 libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
+libname costs 'N:\Documents\Downloads\Melissa\Hospice_Cost_Data\data';
 
 /*************************************************************************/
 /*  Get list of IP and SNF claims for beneficiaries in clean MBS dataset */
