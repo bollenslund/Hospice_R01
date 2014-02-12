@@ -58,6 +58,8 @@ hsurvey.sas
 Drops unneeded variables from the original hospice survey dataset received
 from Melissa in January 2014
 Saves a working copy of this hospice survey dataset as working.hsurvey
+Merges the survey with the cleaned claims dataset and saves the
+combined dataset as ccw.final2
 
 
 

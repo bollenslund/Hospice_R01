@@ -1,3 +1,5 @@
+/*This file merges the hospice survey with the cleaned claims dataset*/
+
 libname melissa 'J:\Geriatrics\Geri\Hospice Project';
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
@@ -6,6 +8,8 @@ run;
 
 proc export data=hsurvey outfile = '\\home\users$\leee20\Documents\Downloads\Melissa\hsurvey_varlist.xls' dbms = excelcs replace;
 run;
+
+/*drop unneeded vairables from the survey*/
 data hsurvey_r01;
 set melissa.hsurvey_r01;
 drop Accred_08
@@ -231,10 +235,13 @@ run;
 proc contents data=melissa.hsurvey_r01 varnum;
 run;
 
+/*saves the dataset to the working directory*/
 data ccw.hsurvey;
 set hsurvey_r01;
 run;
 
+/*create combined state, county ssa code in the survey dataset
+for merging in the county level data from the AHRF*/
 proc sql;
 create table test as
 select cats(SSAstate_08, SSAcoun_08) as SSA_Hospice 
@@ -246,6 +253,7 @@ set hsurvey_r01;
 SSA_Hospice_Code = cat(SSAstate_08, SSAcoun_08);
 run;
 
+/*merge in ahrf county level variables*/
 proc sql;
 create table hsurvey_r01_2
 as select a.*, b.county_state, b.beds_2009, b.nursing_beds_2009, b.per_cap_inc_2009, b.urban_cd
@@ -254,13 +262,14 @@ left join ccw.ahrf b
 on b.SSA_stat_County = a.SSA_Hospice_Code;
 quit;
 proc freq data=hsurvey_r01_2;
-table beds_2009;
+table beds_2009 /missprint;
 run;
 
 proc sort data=hsurvey_r01_2;
 by POS1;
 run;
 
+/*check the two POS numbers in the survey dataset, they are the same*/
 data test;
 set hsurvey_r01_2;
 diff = POS_STUDY_ID - POS1;
@@ -318,6 +327,10 @@ run;
 proc append base=final_hsurvey1_1 data=final_hsurvey1_3;
 run;
 */
+
+/*merge the cleaned claims dataset with the hospice survey on provider id
+Uses provider id from the first hospice stay
+All beneficiaries match with a hospice in the survey*/
 proc sql;
 create table final_hsurvey
 as select *
@@ -327,7 +340,7 @@ on a.provider = b.POS1
 ; quit;
 
 proc freq data=final_hsurvey;
-table beds_2009;
+table beds_2009 /missprint;
 run;
 
 data final_hsurvey1;
