@@ -116,6 +116,46 @@ run;
 proc freq data=test;
 table ddiff40_1 ddiff41_1 ddiff42_1;
 run;
+
+/*obs that did not die during hospice stay per discharge code, but per dod they did **2386 obs*/
+data zzztest3;
+set final;
+if discharge ~= 40 and discharge ~= 41 and discharge ~= 42 then ddiff_didnotdie = end - dod_clean;
+run;
+
+proc freq data = zzztest3;
+table ddiff_didnotdie /missprint;
+run;
+
+/*of these 27 have date of death conflict where death date is earlier than hs discharge date*/
+data zzztest4;
+set zzztest3 (keep = bene_id start end discharge dod_clean ddiff_didnotdie);
+if ddiff_didnotdie=> 0 & ddiff_didnotdie~=.;
+run;
+
+proc freq data=zzztest4;
+table ddiff_didnotdie;
+run;
+
+/*obs where dod after hospice death date: 1790 obs*/
+data zzztest1;
+set test (keep = bene_id start end discharge dod_clean ddiff40_1 ddiff41_1 ddiff42_1);
+if (ddiff40_1 < 0 AND ddiff40_1 ~= .) or (ddiff41_1 < 0 AND ddiff41_1 ~= .) or (ddiff42_1 < 0 AND ddiff42_1 ~= .);
+run;
+proc freq data=zzztest1;
+table ddiff40_1 ddiff41_1 ddiff42_1;
+run;
+
+/*obs where dod before hospice death date: 150 obs*/
+data zzztest2;
+set test (keep = bene_id start end discharge dod_clean ddiff40_1 ddiff41_1 ddiff42_1);
+if (ddiff40_1 > 0 AND ddiff40_1 ~= .) or (ddiff41_1 > 0 AND ddiff41_1 ~= .) or (ddiff42_1 > 0 AND ddiff42_1 ~= .);
+run;
+proc freq data=zzztest2;
+table ddiff40_1 ddiff41_1 ddiff42_1;
+run;
+
+
 /*I did separately to see if any one of the discharge codes lead to more
 discrepancy in the death date. Turns out, death dates do not entirely correlate
 with one another between Hospice and MB files. Just use MBS death dates*/
