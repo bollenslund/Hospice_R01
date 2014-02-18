@@ -108,51 +108,103 @@ quit;
 Death date should be coded as discharge dates for beneficiaries that die in hospice
 for mbs death date, use NDI death date, if missing use non NDI verified death date*/
 data test;
-set final;
-if discharge = 40 then ddiff40_1 = end - dod_clean;
-if discharge = 41 then ddiff41_1 = end - dod_clean;
-if discharge = 42 then ddiff42_1 = end - dod_clean;
+set ccw.final2;
+if discharge = 40 then ddiff40_1 = dod_clean - end;
+if discharge = 41 then ddiff41_1 = dod_clean - end;
+if discharge = 42 then ddiff42_1 = dod_clean - end;
 run;
 proc freq data=test;
 table ddiff40_1 ddiff41_1 ddiff42_1;
 run;
 
 /*obs that did not die during hospice stay per discharge code, but per dod they did **2386 obs*/
+proc freq data=final;
+table discharge2-discharge21;
+run;
+/*discharge2-discharge10 as well as discharge 14 and 21 all have codes 40-42. I will give them date of deaths based on their discharge codes*/
 data zzztest3;
 set final;
-if discharge ~= 40 and discharge ~= 41 and discharge ~= 42 then ddiff_didnotdie = end - dod_clean;
+if discharge ~= 40 and discharge ~= 41 and discharge ~= 42;
+ddiff_didnotdie = dod_clean - end;
+if (discharge2 = 40|discharge2 = 41|discharge2 = 42) then dod_clean = end2;
+if (discharge3 = 40|discharge3 = 41|discharge3 = 42) then dod_clean = end3;
+if (discharge4 = 40|discharge4 = 41|discharge4 = 42) then dod_clean = end4;
+if (discharge5 = 40|discharge5 = 41|discharge5 = 42) then dod_clean = end5;
+if (discharge6 = 40|discharge6 = 41|discharge6 = 42) then dod_clean = end6;
+if (discharge7 = 40|discharge7 = 41|discharge7 = 42) then dod_clean = end7;
+if (discharge8 = 40|discharge8 = 41|discharge8 = 42) then dod_clean = end8;
+if (discharge9 = 40|discharge9 = 41|discharge9 = 42) then dod_clean = end9;
+if (discharge10 = 40|discharge10 = 41|discharge10 = 42) then dod_clean = end10;
+if (discharge14 = 40|discharge14 = 41|discharge14 = 42) then dod_clean = end14;
+if (discharge21 = 40|discharge21 = 41|discharge21 = 42) then dod_clean = end21;
 run;
-
 proc freq data = zzztest3;
-table ddiff_didnotdie /missprint;
+table dod_clean/missprint;
 run;
 
 /*of these 27 have date of death conflict where death date is earlier than hs discharge date*/
 data zzztest4;
 set zzztest3 (keep = bene_id start end discharge dod_clean ddiff_didnotdie);
-if ddiff_didnotdie=> 0 & ddiff_didnotdie~=.;
+if ddiff_didnotdie<= 0 & ddiff_didnotdie~=.;
 run;
 
 proc freq data=zzztest4;
 table ddiff_didnotdie;
 run;
 
-/*obs where dod after hospice death date: 1790 obs*/
+proc freq data=test;
+table disenr;
+run;
+
+/*obs where dod before hospice death date: 150 obs*/
 data zzztest1;
 set test (keep = bene_id start end discharge dod_clean ddiff40_1 ddiff41_1 ddiff42_1);
 if (ddiff40_1 < 0 AND ddiff40_1 ~= .) or (ddiff41_1 < 0 AND ddiff41_1 ~= .) or (ddiff42_1 < 0 AND ddiff42_1 ~= .);
+i = 0;
 run;
 proc freq data=zzztest1;
 table ddiff40_1 ddiff41_1 ddiff42_1;
 run;
 
-/*obs where dod before hospice death date: 150 obs*/
+/*obs where dod after hospice death date: 1790 obs*/
 data zzztest2;
 set test (keep = bene_id start end discharge dod_clean ddiff40_1 ddiff41_1 ddiff42_1);
 if (ddiff40_1 > 0 AND ddiff40_1 ~= .) or (ddiff41_1 > 0 AND ddiff41_1 ~= .) or (ddiff42_1 > 0 AND ddiff42_1 ~= .);
+i = 1;
 run;
 proc freq data=zzztest2;
 table ddiff40_1 ddiff41_1 ddiff42_1;
+run;
+
+proc append base=zzztest1 data=zzztest2; run;
+
+data zzztest1a;
+set zzztest1;
+if ddiff40_1 ~=. and ddiff41_1 = . and ddiff42_1 = . then ddiff = ddiff40_1;
+if ddiff40_1 =. and ddiff41_1 ~= . and ddiff42_1 = . then ddiff = ddiff41_1;
+if ddiff40_1 =. and ddiff41_1 = . and ddiff42_1 ~= . then ddiff = ddiff42_1;
+dayofmonth = day(dod_clean);
+month = month(dod_clean);
+if month = 4 | month = 6 | month = 9 | month = 11 then _30day = 1;
+if month = 2 then _30day = 0;
+if month = 1 | month = 3 | month = 5 | month = 7 | month = 8 | month = 10 | month = 12 then _30day = 2;
+drop ddiff40_1 ddiff41_1 ddiff42_1;
+run;
+proc sort data=zzztest1a out=zzzsort; by _30day;
+run;
+proc freq data=zzzsort;
+table dayofmonth;
+by _30day;
+run;
+data zzztest1b;
+set zzztest1a;
+if ddiff = 1 or ddiff = -1 then delete;
+run;
+proc sort data=zzztest1b out=zzzsort; by _30day;
+run;
+proc freq data=zzzsort;
+table dayofmonth;
+by _30day;
 run;
 
 
@@ -174,18 +226,25 @@ if bene_id = 'ZZZZZZZOyZuO9O3';
 run;
 
 data final;
-set final;
+set ccw.final2;
 if disenr = 1 then do;
 time_disenr_to_death = dod_clean - end + 1;
 end;
 if disenr = 0 then time_disenr_to_death = 0;
-if time_disenr_to_death = . then time_disenr_to_death = 0;
+run;
+proc freq data=final;
+table disenr;
 run;
 
 data zzztest;
 set final;
-if time_disenr_to_death < 0;
+if time_disenr_to_death <= 0 and time_disenr_to_death ~= . and disenr = 1;
+
 run;
+data zzztest1;
+set zzztest (keep = bene_id start end discharge discharge_i dod_clean time_disenr_to_death totalcost);
+run;
+proc export data=zzztest1 outfile = '\\home\users$\leee20\Documents\Downloads\Melissa\negative.xls' dbms = excelcs replace label; run;
 
 proc freq data=final;
 table time_disenr_to_death;
