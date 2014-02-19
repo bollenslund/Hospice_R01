@@ -8,8 +8,8 @@ run;
 proc freq data=medpar;
 table DSCHRG_DSTNTN_CD;
 run;
-proc sort data=medpar out=medpar1 nodupkey;
-by bene_id;
+proc sort data=medpar out=medpar1;
+by bene_id descending bene_death_dt;
 run;
 data medpar1;
 set medpar1 (keep = bene_id DSCHRG_DT BENE_DEATH_DT);
@@ -18,8 +18,16 @@ drop bene_death_dt;
 label medpardeath = "Date Beneficiary Died";
 format medpardeath date9.;
 run;
-data ccw.deathfrommedpar;
+data test;
 set medpar1;
+if bene_id = 'ZZZZZZZ3ppIuZ4I' or bene_id = 'ZZZZZZZk3pI44yy';
+run;
+proc sort data=medpar1 out=medpar2 nodupkey;
+by bene_id;
+run;
+
+data ccw.deathfrommedpar;
+set medpar2;
 run;
 
 data hospice_raw;
