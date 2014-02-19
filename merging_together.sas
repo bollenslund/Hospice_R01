@@ -69,7 +69,9 @@ run;
 data ccw.final_mb_cc;
 set final_mb_cc;
 run;
-
+data final_mb_cc;
+set ccw.final_mb_cc1;
+run;
 proc freq;
 table re_: female dod_ndi_ind /missprint;
 run;
