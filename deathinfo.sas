@@ -124,168 +124,35 @@ data death4_2;
 set death4_1;
 if dod_clean =.;
 run;
-
-
-
-/*look at those without death dates*/
-data zzztest3d;
-set zzztest3c;
-if dod_clean = .;
+data ccw.deathdates;
+set death4 (keep = bene_id end dod_clean disenr);
 run;
-data ccw.deathdraft;
-set zzztest3c;
-run;
-/*of these 27 have date of death conflict where death date is earlier than hs discharge date. Total of 2359 have death dates exactly on that day. Turn them into disenrolled*/
-data zzztest4;
-set zzztest3c (keep = bene_id ddiff_1 start end discharge disenr dod_clean ddiff_didnotdie);
-if ddiff_didnotdie<= 0 & ddiff_didnotdie~=. then disenr1 = 0;
-dod_clean1 = dod_clean;
-format dod_clean1 date9.;
-run;
-
-proc freq data=zzztest4;
-table disenr;
-run;
-
-/*obs where dod before hospice death date: 150 obs. Turn all dod_clean to end.*/
-data zzztest5;
-set test (keep = bene_id start end discharge dod_clean ddiff_1);
-if (ddiff_1 < 0 AND ddiff_1 ~= .);
-mod_death = 1;
-dod_clean = end;
-drop ddiff_1;
-run;
-
-/*obs where dod after hospice death date: 1790 obs*/
-data zzztest6;
-set test (keep = bene_id start end discharge dod_clean ddiff_1);
-if (ddiff_1 > 0 AND ddiff_1 ~= .);
-mod_death = 1;
-dod_clean = end;
-drop ddiff_1;
-run;
-
-/*bring two together and get a total of 1940*/
-proc append base=zzztest5 data=zzztest6; run;
-data zzztest6;
-set zzztest5;
-dod_clean1 = dod_clean;
-format dod_clean1 date9.;
-run;
-/*merge with mbs*/
-proc sql;
-create table zzztest7
-as select a.*, b.dod_clean1
-from ccw.final_mb_cc a
-left join zzztest6 b
-on a.bene_id = b.bene_id;
-quit;
-data zzztest8;
-set zzztest7;
-if dod_clean1 ~= . then do;
-dod_clean = dod_clean1;
-dod_ndi_ind = 2;
-end;
-drop dod_clean1;
-run;
-/*all 1940 people had date of death corrected*/
-proc freq data=zzztest8;
-table dod_ndi_ind;
+data final_mb;
+set ccw.final_mb_cc;
+drop dod_clean;
 run;
 proc sql;
-create table zzztest9
-as select a.*, b.dod_clean1, b.disenr1
-from zzztest8 a
-left join zzztest4 b
+create table final_mb1
+as select a.*, b.dod_clean, b.disenr, b.end
+from final_mb a
+left join ccw.deathdates b
 on a.bene_id = b.bene_id;
 quit;
-data zzzztest;
-set zzztest9;
-if dod_clean1 ~= . then do;
-dod_clean = dod_clean1;
-dod_ndi_ind = 3;
-end;
-drop dod_clean1;
-run;
-proc freq data=zzzztest;
-table dod_ndi_ind;
-run;
-proc freq data=zzzztest;
-table dod_clean;
-run;
-/*
-proc append base=zzztest1 data=zzztest2; run;
-
-data zzztest1a;
-set zzztest1;
-if ddiff40_1 ~=. and ddiff41_1 = . and ddiff42_1 = . then ddiff = ddiff40_1;
-if ddiff40_1 =. and ddiff41_1 ~= . and ddiff42_1 = . then ddiff = ddiff41_1;
-if ddiff40_1 =. and ddiff41_1 = . and ddiff42_1 ~= . then ddiff = ddiff42_1;
-dayofmonth = day(dod_clean);
-month = month(dod_clean);
-if month = 4 | month = 6 | month = 9 | month = 11 then _30day = 1;
-if month = 2 then _30day = 0;
-if month = 1 | month = 3 | month = 5 | month = 7 | month = 8 | month = 10 | month = 12 then _30day = 2;
-drop ddiff40_1 ddiff41_1 ddiff42_1;
-run;
-proc sort data=zzztest1a out=zzzsort; by _30day;
-run;
-proc freq data=zzzsort;
-table dayofmonth;
-by _30day;
-run;
-data zzztest1b;
-set zzztest1a;
-if ddiff = 1 or ddiff = -1 then delete;
-run;
-proc sort data=zzztest1b out=zzzsort; by _30day;
-run;
-proc freq data=zzzsort;
-table dayofmonth;
-by _30day;
-run;
-
-*/
-/*I did separately to see if any one of the discharge codes lead to more
-discrepancy in the death date. Turns out, death dates do not entirely correlate
-with one another between Hospice and MB files. Just use MBS death dates*/
-data zzztest;
-set test (keep = bene_id start end discharge dod_clean ddiff40_1);
-if ddiff40_1 < 0 AND ddiff40_1 ~= .;
-run;
-/*most of the differences seem to be around -1 which is one day off. Maybe it's a systematic thing
-between the two different reports*/
-/*600 with differences > 2. Majority of the people have death dates in the Master Beneficiary that's in the last day so of the
-month. This is probalby another systematic thing that we should probably discuss, but for now, I'm thinking that the Hospice date of death
-might be more accurate. Thoughts?*/
-/*
-data zzztest2;
-set final;
-if bene_id = 'ZZZZZZZOyZuO9O3';
-run;
-
-data final;
-set ccw.final2;
+data final_mb2;
+set final_mb1;
 if disenr = 1 then do;
-time_disenr_to_death = dod_clean - end + 1;
+time_disenr_to_death = dod_clean - end;
 end;
 if disenr = 0 then time_disenr_to_death = 0;
 run;
-proc freq data=final;
-table disenr;
+proc freq data=final_mb2;
+table disenr time_disenr_to_death;
 run;
-
-data zzztest;
-set final;
-if time_disenr_to_death <= 0 and time_disenr_to_death ~= . and disenr = 1;
-
+data final_mb3;
+set final_mb2;
+if time_disenr_to_death < 0 then dod_clean = .;
+drop end disenr;
 run;
-data zzztest1;
-set zzztest (keep = bene_id start end discharge discharge_i dod_clean time_disenr_to_death totalcost);
+data ccw.final_mb_cc1;
+set final_mb3;
 run;
-proc export data=zzztest1 outfile = '\\home\users$\leee20\Documents\Downloads\Melissa\negative.xls' dbms = excelcs replace label; run;
-
-proc freq data=final;
-table time_disenr_to_death;
-run;
-*/
