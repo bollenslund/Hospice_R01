@@ -27,50 +27,8 @@ table start21;
 run;
 
 /*code race and ethnicity, gender, date of death variables from the mbs file*/
-data final_mb_cc;
+data final_mb_cc_dod;
 set ccw.mb_final_cc;
-drop lengthmedi lengthmo allmedistatus1 allhmostatus1 allmedistatus2 allhmostatus2 allmedistatus3 allhmostatus3;
-/*race and ethnicity variables*/
-re_white = 0; re_black = 0; re_other = 0; re_asian = 0; re_hispanic = 0; re_na = 0; re_unknown = 0;
-if BENE_RACE_CD = 1 then re_white = 1;
-if BENE_RACE_CD = 2 then re_black = 1;
-if BENE_RACE_CD = 3 then re_other = 1;
-if BENE_RACE_CD = 4 then re_asian = 1;
-if BENE_RACE_CD = 5 then re_hispanic = 1;
-if BENE_RACE_CD = 6 then re_na = 1;
-if BENE_RACE_CD = 0 then re_unknown = 1;
-label re_white = "White race / ethnicity";
-label re_black = "Black race / ethnicity";
-label re_other = "Other race / ethnicity";
-label re_asian = "Asian race / ethnicity";
-label re_hispanic = "Hispanic race / ethnicity";
-label re_na = "Native American race / ethnicity";
-label re_unknown = "Unknown race / ethnicity";
-/*gender variable*/
-female = .;
-if BENE_SEX_IDENT_CD=1 then female = 0;
-if BENE_SEX_IDENT_CD=2 then female = 1;
-label female = "Female indicator";
-/*date of death, use NDI if present, otherwise, use bene_dod variable from mbs*/
-dod_clean = .;
-dod_ndi_ind = .;
-if NDI_DEATH_DT ~=. then do;
-   dod_clean =  NDI_DEATH_DT;
-   dod_ndi_ind = 1;
-   end;
-if NDI_DEATH_DT = . then do;
-   dod_clean= BENE_DEATH_DT;
-   if BENE_DEATH_DT ~=. then dod_ndi_ind = 0;
-   end;
-label dod_clean = "Date of death";
-label dod_ndi_ind = "Date of death from NDI indicator";
-format dod_clean date9.;
-run;
-data ccw.final_mb_cc;
-set final_mb_cc;
-run;
-data final_mb_cc;
-set ccw.final_mb_cc1;
 run;
 proc freq;
 table re_: female dod_ndi_ind /missprint;

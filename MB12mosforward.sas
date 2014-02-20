@@ -497,7 +497,43 @@ data medihmo5;
 	set medihmo4;
 	if partab = 0 or nohmo = 0 or age = 0 then delete;
 	drop allmedistatus allhmostatus partab nohmo age mosdif yeardiff hmo_status medi_status deathmonth deathyr dod death_i startmonth BENE_HMO_CVRAGE_TOT_MONS BENE_STATE_BUYIN_TOT_MONS BENE_SMI_CVRAGE_TOT_MONS BENE_HI_CVRAGE_TOT_MONS BENE_PTB_TRMNTN_CD BENE_PTA_TRMNTN_CD
-	BENE_ENTLMT_RSN_CURR BENE_ENTLMT_RSN_ORIG RTI_RACE_CD startyear BENE_MDCR_STATUS_CD BENE_ESRD_IND start;
+	BENE_ENTLMT_RSN_CURR BENE_ENTLMT_RSN_ORIG RTI_RACE_CD startyear BENE_MDCR_STATUS_CD BENE_ESRD_IND start lengthmedi lengthmo allmedistatus1 allhmostatus1 allmedistatus2 allhmostatus2 allmedistatus3 allhmostatus3;
+	/*race and ethnicity variables*/
+	re_white = 0; re_black = 0; re_other = 0; re_asian = 0; re_hispanic = 0; re_na = 0; re_unknown = 0;
+	if BENE_RACE_CD = 1 then re_white = 1;
+	if BENE_RACE_CD = 2 then re_black = 1;
+	if BENE_RACE_CD = 3 then re_other = 1;
+	if BENE_RACE_CD = 4 then re_asian = 1;
+	if BENE_RACE_CD = 5 then re_hispanic = 1;
+	if BENE_RACE_CD = 6 then re_na = 1;
+	if BENE_RACE_CD = 0 then re_unknown = 1;
+	label re_white = "White race / ethnicity";
+	label re_black = "Black race / ethnicity";
+	label re_other = "Other race / ethnicity";
+	label re_asian = "Asian race / ethnicity";
+	label re_hispanic = "Hispanic race / ethnicity";
+	label re_na = "Native American race / ethnicity";
+	label re_unknown = "Unknown race / ethnicity";
+	/*gender variable*/
+	female = .;
+	if BENE_SEX_IDENT_CD=1 then female = 0;
+	if BENE_SEX_IDENT_CD=2 then female = 1;
+	label female = "Female indicator";
+	/*date of death, use NDI if present, otherwise, use bene_dod variable from mbs*/
+	dod_clean = .;
+	dod_ndi_ind = .;
+	if NDI_DEATH_DT ~=. then do;
+	   dod_clean =  NDI_DEATH_DT;
+	   dod_ndi_ind = 1;
+	   end;
+	if NDI_DEATH_DT = . then do;
+	   dod_clean= BENE_DEATH_DT;
+	   if BENE_DEATH_DT ~=. then dod_ndi_ind = 0;
+	   end;
+	label dod_clean = "Date of death";
+	label dod_ndi_ind = "Date of death from NDI indicator";
+	format dod_clean date9.;
+
 run; 
 
 /*save final mbs file, not merged with hospice stay dataset*/

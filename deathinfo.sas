@@ -198,7 +198,7 @@ proc freq data=ccw.deathdates;
 table dod_date_invalid death_claim;
 run;
 data final_mb;
-set ccw.final_mb_cc;
+set ccw.mb_final_cc;
 drop dod_clean;
 run;
 /*bring in clean death date to cleaned mbs dataset*/
@@ -231,7 +231,7 @@ if time_disenr_to_death < 0 then dod_clean = .;
 drop end disenr;
 run;
 /*save new version of the mb_cc dataset with the disenrollment to death variable added*/
-data ccw.final_mb_cc1;
+data ccw.final_mb_cc_dod;
 set final_mb3;
 run;
 
