@@ -1,6 +1,11 @@
+libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
+libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
+
 proc freq data=merged.Medpar_all_file;
-table PTNT_DSCHRG_STUS_CD;
+table BENE_DSCHRG_STUS_CD DSCHRG_DSTNTN_CD /missprint;
 run;
+
+/*only keep obs where the death date is filled in*/
 data medpar;
 set merged.Medpar_all_file;
 if BENE_DEATH_DT ~=.;
@@ -26,6 +31,7 @@ proc sort data=medpar1 out=medpar2 nodupkey;
 by bene_id;
 run;
 
+/*saves dataset with medpar death dates, using the bene_death_dt field*/
 data ccw.deathfrommedpar;
 set medpar2;
 run;

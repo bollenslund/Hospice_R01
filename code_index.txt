@@ -40,6 +40,11 @@ aggregated by date - costs during hospice and after hospice
 dme_hh_carr.sas
 Process remaining claim types to get aggregated costs during and after hospice
 
+deathinfo.sas
+Creates a clean date of death variable drawing from the hospice claims, 
+mbs file and medpar claims datasets
+Merges the dod variable into the ccw.final_mb_cc1 dataset
+
 merging_together.sas:
 Creates a single claims dataset with cleaned information from the
 hospice claims, mbs file, and all other claim types

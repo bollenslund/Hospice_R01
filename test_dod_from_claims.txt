@@ -1,0 +1,156 @@
+libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
+libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
+
+data hs_claims;
+set merged.Hospice_base_claims_j(keep=bene_id CLM_FROM_DT CLM_THRU_DT PTNT_DSCHRG_STUS_CD);
+run;
+
+data mbs;
+set merged.Mbsf_ab_summary(keep=bene_id BENE_ENROLLMT_REF_YR BENE_DEATH_DT);
+run;
+
+data medpar;
+set merged.Medpar_all_file(keep=bene_id BENE_DEATH_DT DSCHRG_DSTNTN_CD DSCHRG_DT DSCHRG_DSTNTN_CD);
+run;
+
+proc freq data=hs_claims;
+table PTNT_DSCHRG_STUS_CD;
+run;
+
+/*first get dod from hospice claims where hospice discharge status code indicates died in hospice*/
+/*keep only claims with discharge code =died*/
+data hs_claims_died;
+set hs_claims;
+if PTNT_DSCHRG_STUS_CD = 40 or PTNT_DSCHRG_STUS_CD = 41 or PTNT_DSCHRG_STUS_CD = 42;
+run;
+
+proc sort data=hs_claims_died;
+by bene_id clm_thru_dt;
+run;
+
+/*keep last claim for each beneficiary, extra step to ensure one entry per beneficiary
+in case of coding errors where patient did not actually die but coded with death discharge code*/
+data hs_claims_died2;
+set hs_claims_died;
+by bene_id;
+if last.bene_id;
+run;
+
+data hs_claims_died3(keep=bene_id dod_new dod_source);
+set hs_claims_died2;
+dod_new=clm_thru_dt;
+dod_source=2; /*dod source = 1 for hospice claims*/
+run;
+
+/*get sample list of beneficiary ids, merge in new dod*/
+data bene_list;
+set ccw.final_hs (keep=bene_id);
+run;
+
+proc sql;
+create table sample_dod as select * from
+bene_list a left join
+hs_claims_died3 b
+on a.bene_id=b.bene_id;
+quit;
+
+/*if DOD not present from hospice death, then use mbs DOD*/
+
+/*dod from mbs is in last year of life*/
+proc sort data=mbs;
+by BENE_ID BENE_ENROLLMT_REF_YR;
+run;
+
+data mbs_last;
+set mbs;
+by bene_id;
+if last.bene_id;
+run;
+
+data mbs_last1;
+set mbs_last;
+if BENE_DEATH_DT~=.;
+run;
+
+data no_hs_dod;
+set sample_dod;
+if dod_new=.;
+run;
+
+proc sql;
+create table dod_mbs as select * from
+no_hs_dod a left join
+mbs_last1 b
+on a.bene_id=b.bene_id;
+run;
+
+
+proc sql;
+create table dod_add_mbs
+as select a.*,b.bene_death_dt as dod_mbs from
+sample_dod a left join
+dod_mbs b
+on a.bene_id=b.bene_id;
+quit;
+
+data sample_dod_2;
+set dod_add_mbs;
+if dod_new=. & dod_mbs~=. then do;
+   dod_new=dod_mbs;
+   dod_source=1;
+   end;
+run;
+
+/*if not present in hospice or mbs, then use dod from medpar*/
+/*get last claim with dod from medpar file*/
+proc sort data=medpar;
+by bene_id DSCHRG_DT;
+run;
+
+data medpar_dod;
+set medpar;
+by bene_id;
+if last.bene_id;
+run;
+
+proc sql;
+create table dod_add_medpar
+as select a.*,b.bene_death_dt as dod_mp from
+sample_dod_2 a left join
+medpar_dod b
+on a.bene_id=b.bene_id;
+quit;
+
+data sample_dod_3;
+set dod_add_medpar;
+if dod_new=. & dod_mp~=. then do;
+   dod_new=dod_mp;
+   dod_source=3;
+   end;
+run;
+
+proc freq;
+table dod_source /missprint;
+run;
+
+/*merge in these dates with the ones that Eric put together using our clean dataset*/
+data eric;
+set ccw.final_mb_cc1;
+run;
+
+proc sql;
+create table test_dod as select a.*, b.dod_new as dod_rg, b.dod_source as dod_source_rg from
+eric a left join
+sample_dod_3 b
+on a.bene_id=b.bene_id;
+quit;
+
+data test_dod2;
+set test_dod;
+diff_dod = dod_clean - dod_rg;
+diff_source = death_claim - dod_source_rg;
+run;
+
+proc freq;
+table diff_dod diff_source death_claim*dod_source_rg /missprint;
+run;
