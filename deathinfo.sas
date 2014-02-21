@@ -4,6 +4,7 @@
 
 /*Date of death comes from several sources
 1. Use date of death from the master beneficary summary file
+(either NDI verified dod or CMS dod if NDI dod not available)
 2. Hospice claims - where discharge code indicates hospice death, then
 dod set to the last day of the hospice claim.
 This step overwrites the mbs dates for those beneficiaries with a hospice death.
