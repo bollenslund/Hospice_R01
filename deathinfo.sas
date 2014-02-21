@@ -228,6 +228,7 @@ var time_disenr_to_death;
 run;
 data final_mb3;
 set final_mb2;
+/*I don't think we want to drop any data, just use the not valid indicator*/
 if time_disenr_to_death < 0 then dod_clean = .;
 drop end disenr;
 run;

@@ -121,7 +121,7 @@ medpar_dod b
 on a.bene_id=b.bene_id;
 quit;
 
-data sample_dod_3;
+data ccw.sample_dod_3;
 set dod_add_medpar;
 if dod_new=. & dod_mp~=. then do;
    dod_new=dod_mp;
@@ -135,7 +135,7 @@ run;
 
 /*merge in these dates with the ones that Eric put together using our clean dataset*/
 data eric;
-set ccw.final_mb_cc1;
+set ccw.final1;
 run;
 
 proc sql;
