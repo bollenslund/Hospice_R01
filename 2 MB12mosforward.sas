@@ -498,7 +498,7 @@ ods rtf close;
 data medihmo5;
 	set medihmo4;
 	if partab = 0 or nohmo = 0 or age = 0 then delete;
-	drop allmedistatus allhmostatus partab nohmo age mosdif yeardiff hmo_status medi_status deathmonth BENE_DEATH_DT NDI_DEATH_DT deathyr death_i startmonth BENE_HMO_CVRAGE_TOT_MONS BENE_STATE_BUYIN_TOT_MONS BENE_SMI_CVRAGE_TOT_MONS BENE_HI_CVRAGE_TOT_MONS BENE_PTB_TRMNTN_CD BENE_PTA_TRMNTN_CD
+	drop allmedistatus allhmostatus partab nohmo age mosdif yeardiff hmo_status medi_status deathmonth dod_ind BENE_DEATH_DT NDI_DEATH_DT deathyr death_i startmonth BENE_HMO_CVRAGE_TOT_MONS BENE_STATE_BUYIN_TOT_MONS BENE_SMI_CVRAGE_TOT_MONS BENE_HI_CVRAGE_TOT_MONS BENE_PTB_TRMNTN_CD BENE_PTA_TRMNTN_CD
 	BENE_ENTLMT_RSN_CURR BENE_ENTLMT_RSN_ORIG RTI_RACE_CD startyear BENE_MDCR_STATUS_CD BENE_ESRD_IND start lengthmedi lengthmo allmedistatus1 allhmostatus1 allmedistatus2 allhmostatus2 allmedistatus3 allhmostatus3;
 	/*race and ethnicity variables*/
 	re_white = 0; re_black = 0; re_other = 0; re_asian = 0; re_hispanic = 0; re_na = 0; re_unknown = 0;
@@ -532,6 +532,38 @@ run;
 /*if excluded, the total is 149814*/
 proc freq data=medihmo5;
 table Bene_death_date;
+run;
+
+/***********************Changing Sample ************************/
+/*Use the master beneficiary sample selection criteria to remove
+observations from the clean hospice claims dataset*/
+/***************************************************************/
+
+data hs_stays;
+set ccw.hs_stays_cleaned;
+drop BENE_RACE_CD re_white re_black re_other re_asian re_hispanic re_na re_unknown 
+female BENE_CNTY_CD BENE_STATE_CD BENE_MLG_CNTCT_ZIP_CD DOB_DT age_at_enr;
+run;
+
+/*this final sample is created using the mbs files in the code MB12mosforward.sas*/
+data final_sample;
+set ccw.mb_final;
+flag = 1;
+run;
+
+/*only keep beneficiary ids that are in the final sample list created from mbs criteria*/
+proc sql;
+create table final_hs as select * from hs_stays
+where bene_id in (select * from final_sample);
+quit;
+
+proc freq data=final_hs;
+table start14-start21 end14-end21 /missprint;
+run;
+
+/*save hospice dataset restricted to just the sample*/
+data ccw.final_hs_mb;
+set final_hs;
 run;
 
 /*bring in hs start/end dates and stay count so can use this to process claims files*/

@@ -499,6 +499,27 @@ data ccw.outpat_fin;
 set op_total2;
 run;
 
+data hs_mb_others;
+set ccw.final_hs_mb_ip_snf;
+run;
+
+/*this final sample is created using the mbs files in the code MB12mosforward.sas*/
+data final_sample;
+set ccw.outpat_fin;
+run;
+
+/*only keep beneficiary ids that are in the final sample list created from mbs criteria*/
+proc sql;
+create table hs_mb_ip_snf_op as select * from hs_mb_others a
+left join final_sample b
+on a.bene_id = b.bene_id;
+quit;
+
+/*save hospice dataset restricted to just the sample*/
+data ccw.final_hs_mb_ip_snf_op;
+set hs_mb_ip_snf_op;
+run;
+
 proc freq data=op_total2;
 table op_visit_ind op_ed_ind /missprint;
 run;

@@ -752,6 +752,7 @@ disenr = .;
 if count_hs_stays>1 then disenr=1;
 if (count_hs_stays=1 and hs1_death=1) then disenr=0;
 if (count_hs_stays=1 and hs1_death=0) then disenr=1;
+if hs1_death=0 and end = '31DEC2010'd then disenr = 0;
 run;
 proc freq;
 table disenr /missprint;
@@ -804,6 +805,9 @@ data ccw.hs_stays_cleaned;
         set clean_1;
 		drop stay_los2-stay_los21; 
 run;
+proc freq data=ccw.hs_stays_cleaned;
+table disenr;
+run;
 
 /*Check - drops all but the one observation with 21 stays*/
 data test;
@@ -834,33 +838,3 @@ proc export data=ccw.hs_stays_cleaned
 	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\hs_stays_cleaned.dta'
 	replace;
 	run;
-
-/***********************Changing Sample ************************/
-/*Use the master beneficiary sample selection criteria to remove
-observations from the clean hospice claims dataset*/
-/***************************************************************/
-
-data hs_stays;
-set ccw.hs_stays_cleaned;
-run;
-
-/*this final sample is created using the mbs files in the code MB12mosforward.sas*/
-data final_sample;
-set ccw.mb_final (keep = bene_id);
-flag = 1;
-run;
-
-/*only keep beneficiary ids that are in the final sample list created from mbs criteria*/
-proc sql;
-create table final_hs as select * from hs_stays
-where bene_id in (select bene_id from final_sample);
-quit;
-
-proc freq data=final_hs;
-table start14-start21 end14-end21 /missprint;
-run;
-
-/*save hospice dataset restricted to just the sample*/
-data ccw.final_hs;
-set final_hs;
-run;

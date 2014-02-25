@@ -234,29 +234,36 @@ run;
 
 proc contents data=melissa.hsurvey_r01 varnum;
 run;
-
+proc freq data=hsurvey_r01;
+table ssastate_08 ssacoun_08 Provnum_08;
+run;
 /*saves the dataset to the working directory*/
 data ccw.hsurvey;
 set hsurvey_r01;
 run;
-
+proc freq data=ccw.hsurvey;
+table ssastate_08 ssacoun_08;
+run;
 /*create combined state, county ssa code in the survey dataset
 for merging in the county level data from the AHRF*/
 proc sql;
 create table test as
 select cats(SSAstate_08, SSAcoun_08) as SSA_Hospice 
-from hsurvey_r01;
+from ccw.hsurvey;
 quit;
 
 data hsurvey_r01_1;
 set hsurvey_r01;
 SSA_Hospice_Code = cat(SSAstate_08, SSAcoun_08);
 run;
+proc freq data=hsurvey_r01_1;
+table SSA_hospice_code Provnum_08;
+run;
 
 /*merge in ahrf county level variables*/
 proc sql;
 create table hsurvey_r01_2
-as select a.*, b.county_state, b.beds_2009, b.nursing_beds_2009, b.per_cap_inc_2009, b.urban_cd
+as select a.*, b.county_state, b.beds_2009, b.nursing_beds_2009, b.per_cap_inc_2009, b.Census_Pop_2010, b.urban_cd
 from hsurvey_r01_1 a
 left join ccw.ahrf b
 on b.SSA_stat_County = a.SSA_Hospice_Code;
@@ -267,6 +274,10 @@ run;
 
 proc sort data=hsurvey_r01_2;
 by POS1;
+run;
+
+data ccw.hsurvey_r01_1;
+set hsurvey_r01_2;
 run;
 
 /*check the two POS numbers in the survey dataset, they are the same*/

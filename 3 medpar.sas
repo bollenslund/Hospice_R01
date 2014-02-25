@@ -736,4 +736,29 @@ run;
 
 data ccw.ip_snf;
 	set ip_snf2;
+drop BENE_ENROLLMT_REF_YR FIVE_PERCENT_FLAG ENHANCED_FIVE_PERCENT_FLAG COVSTART CRNT_BIC_CD 
+STATE_CODE BENE_COUNTY_CD BENE_ZIP_CD BENE_AGE_AT_END_REF_YR BENE_BIRTH_DT BENE_DEATH_DT 
+NDI_DEATH_DT BENE_SEX_IDENT_CD BENE_RACE_CD BENE_VALID_DEATH_DT_SW start end;
+label admit_pre12m = "Number of IP before hospice stay";
+run;
+
+data hs_mb;
+set ccw.final_hs_mb;
+run;
+
+/*this final sample is created using the mbs files in the code MB12mosforward.sas*/
+data final_sample;
+set ccw.ip_snf;
+run;
+
+/*only keep beneficiary ids that are in the final sample list created from mbs criteria*/
+proc sql;
+create table hs_mb_ip_snf as select * from hs_mb a
+left join final_sample b
+on a.bene_id = b.bene_id;
+quit;
+
+/*save hospice dataset restricted to just the sample*/
+data ccw.final_hs_mb_ip_snf;
+set hs_mb_ip_snf;
 run;

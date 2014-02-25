@@ -3,7 +3,7 @@ libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 libname ref 'J:\Geriatrics\Geri\Hospice Project\Hospice\Reference';
 
 data hospice;
-set ccw.final1;
+set ccw.final_hs_mb_ip_snf_op_dhc (keep = bene_id STATE_CODE BENE_COUNTY_CD);
 statenum = input(STATE_CODE,2.);
 countynum = input(BENE_COUNTY_CD,3.);
 run;
