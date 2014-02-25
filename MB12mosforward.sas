@@ -271,7 +271,8 @@ data medihmo2;
 	label hmo_status = "HMO Indicator";
 	lengthmedi = length (medi_status);
 	lengthmo = length(hmo_status);
-	if dod = . then dod = '31DEC2010'd;
+	dod_ind = 0;
+	if dod = . then do; dod = '31DEC2010'd; dod_ind = 1;end;
 	if deathyr = . then deathyr = year(dod);
 	if deathmonth = . then deathmonth = month(dod);
 	if start = . then delete;
@@ -484,6 +485,7 @@ data medihmo4;
 	if indexc(allhmostatus, "1", "2", "4", "A", "B", "C") then nohmo = 0;
 	age = 1;
 	if BENE_AGE_AT_END_REF_YR <= 65 then age = 0;
+	if dod_ind = 1 then dod = .;
 run;
 
 ods rtf body="J:\Geriatrics\Geri\Hospice Project\output\results.rtf";
@@ -496,7 +498,7 @@ ods rtf close;
 data medihmo5;
 	set medihmo4;
 	if partab = 0 or nohmo = 0 or age = 0 then delete;
-	drop allmedistatus allhmostatus partab nohmo age mosdif yeardiff hmo_status medi_status deathmonth deathyr dod death_i startmonth BENE_HMO_CVRAGE_TOT_MONS BENE_STATE_BUYIN_TOT_MONS BENE_SMI_CVRAGE_TOT_MONS BENE_HI_CVRAGE_TOT_MONS BENE_PTB_TRMNTN_CD BENE_PTA_TRMNTN_CD
+	drop allmedistatus allhmostatus partab nohmo age mosdif yeardiff hmo_status medi_status deathmonth BENE_DEATH_DT NDI_DEATH_DT deathyr death_i startmonth BENE_HMO_CVRAGE_TOT_MONS BENE_STATE_BUYIN_TOT_MONS BENE_SMI_CVRAGE_TOT_MONS BENE_HI_CVRAGE_TOT_MONS BENE_PTB_TRMNTN_CD BENE_PTA_TRMNTN_CD
 	BENE_ENTLMT_RSN_CURR BENE_ENTLMT_RSN_ORIG RTI_RACE_CD startyear BENE_MDCR_STATUS_CD BENE_ESRD_IND start lengthmedi lengthmo allmedistatus1 allhmostatus1 allmedistatus2 allhmostatus2 allmedistatus3 allhmostatus3;
 	/*race and ethnicity variables*/
 	re_white = 0; re_black = 0; re_other = 0; re_asian = 0; re_hispanic = 0; re_na = 0; re_unknown = 0;
@@ -514,26 +516,13 @@ data medihmo5;
 	label re_hispanic = "Hispanic race / ethnicity";
 	label re_na = "Native American race / ethnicity";
 	label re_unknown = "Unknown race / ethnicity";
+	rename dod = BENE_DEATH_DATE;
 	/*gender variable*/
 	female = .;
 	if BENE_SEX_IDENT_CD=1 then female = 0;
 	if BENE_SEX_IDENT_CD=2 then female = 1;
 	label female = "Female indicator";
 	/*date of death, use NDI if present, otherwise, use bene_dod variable from mbs*/
-	dod_clean = .;
-	dod_ndi_ind = .;
-	if NDI_DEATH_DT ~=. then do;
-	   dod_clean =  NDI_DEATH_DT;
-	   dod_ndi_ind = 1;
-	   end;
-	if NDI_DEATH_DT = . then do;
-	   dod_clean= BENE_DEATH_DT;
-	   if BENE_DEATH_DT ~=. then dod_ndi_ind = 0;
-	   end;
-	label dod_clean = "Date of death";
-	label dod_ndi_ind = "Date of death from NDI indicator";
-	format dod_clean date9.;
-
 run; 
 
 /*save final mbs file, not merged with hospice stay dataset*/
@@ -541,6 +530,9 @@ data ccw.mb_final;
 	set medihmo5;
 run;
 /*if excluded, the total is 149814*/
+proc freq data=medihmo5;
+table Bene_death_date;
+run;
 
 /*bring in hs start/end dates and stay count so can use this to process claims files*/
 proc sql;

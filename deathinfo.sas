@@ -37,7 +37,7 @@ if dod_clean ~=. then death_claim = 1;
 run;
 
 proc freq data=death;
-table discharge* ;
+table discharge;
 run;
 
 /*For claims where discharge code from hospice claims indicates died in hospice,
