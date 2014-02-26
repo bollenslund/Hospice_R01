@@ -294,3 +294,10 @@ run;
 
 
 
+proc sql;
+create table ccw.Final_hs_mb_ip_snf_op_dhc_dod_CC
+as select *
+from ccw.Final_hs_mb_ip_snf_op_dhc_dod a
+left join ccw.charlson b
+on a.bene_id = b.bene_id;
+quit;

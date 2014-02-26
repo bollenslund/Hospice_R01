@@ -563,3 +563,78 @@ data test_1;
 	set final;
 		if RPT_REC_NUM = 23385;
 run;
+
+/***************************** MERGING WITH THE MAIN HOSPICE DATA SET*********************************/
+
+proc sort data=costs.a0 out= a0;
+by pid year;
+run;
+proc sort data=costs.d out= d;
+by pid year;
+run;
+proc sort data=costs.g2 out=g2;
+by pid year;
+run;
+proc sort data=costs.s1pt1 out=s1pt1;
+by pid year;
+run;
+proc sort data=costs.s1pt2 out=s1pt2;
+by pid year;
+run;
+proc sort data=costs.s1pt3 out=s1pt3;
+by pid year;
+run;
+proc sort data=costs.s1pt4 out=s1pt4;
+by pid year;
+run;
+proc sort data=a0 out= a0_1 nodupkey;
+by pid;
+run;
+proc sort data=d out = d_1 nodupkey;
+by pid;
+run;
+proc sort data=g2 out=g2_1 nodupkey;
+by pid;
+run;
+proc sort data=s1pt1 out=s1pt1_1 nodupkey;
+by pid;
+run;
+proc sort data=s1pt2 out=s1pt2_1 nodupkey;
+by pid;
+run;
+proc sort data=s1pt3 out=s1pt3_1 nodupkey;
+by pid;
+run;
+proc sort data=s1pt4 out=s1pt4_1 nodupkey;
+by pid;
+run;
+
+proc sql;
+create table costs 
+as select *
+from a0_1 a
+left join d_1 b
+on a.pid = b.pid
+left join g2_1 c
+on a.pid = c.pid
+left join s1pt1_1 d
+on a.pid = d.pid
+left join s1pt2_1 e
+on a.pid = e.pid
+left join s1pt3_1 f
+on a.pid = f.pid
+left join s1pt4_1 g
+on a.pid = g.pid
+;
+quit;
+data ccw.costs;
+set costs;
+run;
+
+proc sql;
+create table ccw.Final_hosp_county_cost
+as select *
+from ccw.Final_hosp_county a
+left join ccw.costs b
+on a.pos1 = b.pid;
+quit;

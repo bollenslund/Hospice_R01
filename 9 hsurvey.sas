@@ -280,85 +280,11 @@ data ccw.hsurvey_r01_1;
 set hsurvey_r01_2;
 run;
 
-/*check the two POS numbers in the survey dataset, they are the same*/
-data test;
-set hsurvey_r01_2;
-diff = POS_STUDY_ID - POS1;
-run;
-proc freq data=test;
-table diff;
-run;
-/*
-data final1;
-set ccw.final1;
-stay = 1;
-if provider2 ~= . then stay = 2;
-if provider3 ~= . then stay = 3;
-run;
-proc freq data=final1;
-table stay;
-run;
-data final1_1;
-set final1;
-if stay = 1;
-run;
-data final1_2;
-set final1;
-if stay = 2;
-run;
-data final1_3;
-set final1;
-if stay = 3;
-run;
-
 proc sql;
-create table final_hsurvey1_1
-as select * 
-from final1_1 a 
-left join hsurvey_r01_2 b
-on a.provider=b.pos1;
-quit;
-proc sql;
-create table final_hsurvey1_2
-as select * 
-from final1_2 a 
-left join hsurvey_r01_2 b
-on a.provider2=b.pos1;
-quit;
-proc sql;
-create table final_hsurvey1_3
-as select * 
-from final1_3 a 
-left join hsurvey_r01_2 b
-on a.provider3=b.pos1;
-quit;
-
-proc append base=final_hsurvey1_1 data=final_hsurvey1_2;
-run;
-proc append base=final_hsurvey1_1 data=final_hsurvey1_3;
-run;
-*/
-
-/*merge the cleaned claims dataset with the hospice survey on provider id
-Uses provider id from the first hospice stay
-All beneficiaries match with a hospice in the survey*/
-proc sql;
-create table final_hsurvey
+create table ccw.Final_hosp_county
 as select *
-from ccw.final1 a
-left join hsurvey_r01_2 b
-on a.provider = b.POS1 
-; quit;
+from ccw.Final_hs_mb_mp_op_dhc_dod_cc_p a
+left join ccw.hsurvey_r01_1 b
+on a.pos1 = b.pos1;
+quit;
 
-proc freq data=final_hsurvey;
-table beds_2009 /missprint;
-run;
-
-data final_hsurvey1;
-set final_hsurvey;
-if beds_2009 = .;
-run;
-
-proc sort data=final_hsurvey out=ccw.final2;
-by bene_id;
-run;
