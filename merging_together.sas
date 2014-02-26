@@ -18,8 +18,6 @@ many of these are beneficiary demo info that will be re-coded with mbs file data
 of the claims data*/
 data final_hs;
 set ccw.final_hs;
-drop BENE_RACE_CD re_white re_black re_other re_asian re_hispanic re_na re_unknown 
-female BENE_CNTY_CD BENE_STATE_CD BENE_MLG_CNTCT_ZIP_CD DOB_DT age_at_enr;
 run;
 
 proc freq data=final_hs;
@@ -36,10 +34,6 @@ run;
 
 data final_inpat;
 set ccw.ip_snf;
-drop BENE_ENROLLMT_REF_YR FIVE_PERCENT_FLAG ENHANCED_FIVE_PERCENT_FLAG COVSTART CRNT_BIC_CD 
-STATE_CODE BENE_COUNTY_CD BENE_ZIP_CD BENE_AGE_AT_END_REF_YR BENE_BIRTH_DT BENE_DEATH_DT 
-NDI_DEATH_DT BENE_SEX_IDENT_CD BENE_RACE_CD BENE_VALID_DEATH_DT_SW start end;
-label admit_pre12m = "Number of IP before hospice stay";
 run;
 
 data final_outpat;

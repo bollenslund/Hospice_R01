@@ -578,5 +578,5 @@ quit;
 
 /*save hospice dataset restricted to just the sample*/
 data ccw.final_hs_mb_ip_snf_op_dhc;
-set hs_mb_ip_snf_op;
+set hs_mb_ip_snf_op_dhc;
 run;
