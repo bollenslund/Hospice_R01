@@ -7,7 +7,7 @@ claims into data files by type of claims data (hospice_base,
 hospice_revenue, etc.)
 
 
-Hospice_Claims.sas:
+1 Hospice_Claims.sas:
 Drops beneficiaries that don't have first claim within Sept 2008 and Nov 2009
 Checks for claims that span a single hospice stay and merges claim start and end
 dates, costs
@@ -15,22 +15,34 @@ Merges all revenue code days by beneficiary
 Structures data so there is one line per beneficiary with variables
            for each of their hospice stays
            
+2 MB12mosforward.sas:
+Processes the master beneficiary summary files to get date of death, demographics and
+location.
+Determines sample elgibility using medicare parts a and b coverage, hmo status,
+and age (age < 64 at end of hospice enrollment year per mbsf)
+Creates hospice dataset that is limited to the mbs sample criteria saved as
+ccw.final_hs_mb
+Creates MBS dataset with hospice stay 1 start and end dates and count of hospice
+stays for use in the medpar claims processing (next step) saved as ccw.for_medpar
+
+3 medpar.sas:
+Process medpar claims to get two claims datasets:
+1. ccw.ip_claims_clean - Inpatient claims which has start/end dates, costs for each 
+   inpatient claim. Also contains indicator for hospital death and ICU and ED use 
+   for each IP claim
+2. ccw.snf - SNF claims with start/end dates and costs for each SNF stay
+Then merges the medpar claims with the already processed datasets
+3. ccw.final_hs_mb_ip_snf - Hospice, MBS, IP and SNF use information merged into
+   single dataset
+
 chronic_conditions.sas:
 Collects diagnosis codes from all claims 12 months before the first hopsice
 enrollment, then creates indicator variables for each of the chronic conditions
 
 
-MB12mosforward.sas:
-Processes the master beneficiary summary files to get date of death, demographics and
-location.
-Determines sample elgibility using medicare parts a and b coverage, hmo status,
-and age (age < 64 at end of hospice enrollment year per mbsf)
 
-medpar.sas:
-Process medpar claims to get two claims datasets:
-1. Inpatient claims which has start/end dates, costs for each inpatient claim
-   Also contains indicator for hospital death and ICU and ED use for each IP claim
-2. SNF claims with start/end dates and costs for each SNF stay
+
+
 
 outpat.sas
 Process outpatient claims
