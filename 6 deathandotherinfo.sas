@@ -215,19 +215,16 @@ set ccw.final_hs_mb_ip_snf_op_dhc;
 drop disenr;
 run;
 
-/*this final sample is created using the mbs files in the code MB12mosforward.sas*/
 data final_sample;
 set ccw.deathdates;
 run;
 
-/*only keep beneficiary ids that are in the final sample list created from mbs criteria*/
 proc sql;
 create table hs_mb_ip_snf_op_dhc_dod as select * from hs_mb_others a
 left join final_sample b
 on a.bene_id = b.bene_id;
 quit;
 
-/*save hospice dataset restricted to just the sample*/
 data ccw.final_hs_mb_ip_snf_op_dhc_dod;
 set hs_mb_ip_snf_op_dhc_dod;
 run;
