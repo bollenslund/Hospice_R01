@@ -808,6 +808,10 @@ run;
 proc freq data=ccw.hs_stays_cleaned;
 table disenr;
 run;
+ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\hospice.rtf';
+proc contents data=ccw.hs_stays_cleaned varnum;
+run;
+ods rtf close;
 
 /*Check - drops all but the one observation with 21 stays*/
 data test;

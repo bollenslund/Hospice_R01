@@ -205,9 +205,14 @@ run;
 proc freq data=ccw.deathdates;
 table death_claim*disenr/missprint;
 run;
+ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\death.rtf';
+proc contents data=ccw.deathdates varnum;
+run;
+ods rtf close;
 
 data hs_mb_others;
 set ccw.final_hs_mb_ip_snf_op_dhc;
+drop disenr;
 run;
 
 /*this final sample is created using the mbs files in the code MB12mosforward.sas*/
@@ -226,7 +231,11 @@ quit;
 data ccw.final_hs_mb_ip_snf_op_dhc_dod;
 set hs_mb_ip_snf_op_dhc_dod;
 run;
-
+ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\num_death.rtf';
+proc freq data=ccw.final_hs_mb_ip_snf_op_dhc_dod;
+table death_claim*disenr /missprint;
+run;
+ods rtf close;
 
 data final_mb;
 set ccw.mb_final_cc;
@@ -288,3 +297,4 @@ run;
 proc freq data=missing;
 table disenroll*group / chisq;
 run;
+

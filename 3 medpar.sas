@@ -741,6 +741,10 @@ STATE_CODE BENE_COUNTY_CD BENE_ZIP_CD BENE_AGE_AT_END_REF_YR BENE_BIRTH_DT BENE_
 NDI_DEATH_DT BENE_SEX_IDENT_CD BENE_RACE_CD BENE_VALID_DEATH_DT_SW start end;
 label admit_pre12m = "Number of IP before hospice stay";
 run;
+ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\ipsnf.rtf';
+proc contents data=ccw.ip_snf varnum;
+run;
+ods rtf close;
 
 data hs_mb;
 set ccw.final_hs_mb;

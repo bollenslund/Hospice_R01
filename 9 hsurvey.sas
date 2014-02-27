@@ -279,7 +279,10 @@ run;
 data ccw.hsurvey_r01_1;
 set hsurvey_r01_2;
 run;
-
+ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\hsurvey.rtf';
+proc contents data=ccw.hsurvey_r01_1 varnum;
+run;
+ods rtf close;
 proc sql;
 create table ccw.Final_hosp_county
 as select *

@@ -638,3 +638,7 @@ from ccw.Final_hosp_county a
 left join ccw.costs b
 on a.pos1 = b.pid;
 quit;
+
+proc freq data=ccw.final_hosp_county_cost;
+table year;
+run;

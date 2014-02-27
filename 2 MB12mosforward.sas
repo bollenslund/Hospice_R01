@@ -529,6 +529,10 @@ run;
 data ccw.mb_final;
 	set medihmo5;
 run;
+ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\mbs.rtf';
+proc contents data=ccw.mb_final varnum;
+run;
+ods rtf close;
 /*if excluded, the total is 149814*/
 proc freq data=medihmo5;
 table Bene_death_date;
@@ -541,8 +545,8 @@ observations from the clean hospice claims dataset*/
 
 data hs_stays;
 set ccw.hs_stays_cleaned;
-drop BENE_RACE_CD re_white re_black re_other re_asian re_hispanic re_na re_unknown 
-female BENE_CNTY_CD BENE_STATE_CD BENE_MLG_CNTCT_ZIP_CD DOB_DT age_at_enr;
+drop BENE_RACE_CD re_white re_black re_other re_asian re_hispanic re_na re_unknown provider
+female BENE_CNTY_CD BENE_STATE_CD BENE_MLG_CNTCT_ZIP_CD DOB_DT;
 run;
 
 /*this final sample is created using the mbs files in the code MB12mosforward.sas*/

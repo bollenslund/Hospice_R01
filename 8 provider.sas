@@ -70,7 +70,12 @@ table pos_change;
 run;
 data ccw.providers;
 set providers4;
+drop flag;
 run;
+ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\providers.rtf';
+proc contents data=ccw.providers varnum;
+run;
+ods rtf close;
 
 proc sql;
 create table ccw.Final_hs_mb_mp_op_dhc_dod_cc_p

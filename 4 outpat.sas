@@ -498,7 +498,10 @@ run;
 data ccw.outpat_fin;
 set op_total2;
 run;
-
+ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\outpat.rtf';
+proc contents data=ccw.outpat_fin varnum;
+run;
+ods rtf close;
 data hs_mb_others;
 set ccw.final_hs_mb_ip_snf;
 run;

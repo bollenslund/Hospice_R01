@@ -291,7 +291,10 @@ run;
 data ccw.charlson;
 set charlson_2;
 run;
-
+ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\charlson.rtf';
+proc contents data=ccw.charlson varnum;
+run;
+ods rtf close;
 
 
 proc sql;
