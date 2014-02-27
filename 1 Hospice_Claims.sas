@@ -381,7 +381,7 @@ by bene_id;
 if i = . then delete;
 run;
 proc sort data=hospice_base_test3;
-by bene_id clm_from_id pos1;
+by bene_id descending CLM_FROM_DT;
 run;
 proc sort data=hospice_base_test3 out=hospice_base_test4 nodupkey;
 by bene_id pos1;
@@ -392,14 +392,11 @@ var pos1;
 run;
 data provider_id1;
 set provider_id;
-if provider4~=. then provider = provider4;
-if provider3~=. and provider4 = . then provider = provider3;
-if provider2~=. and provider3 = . and provider4 = . then provider = provider2;
-if provider2=. and provider3 = . and provider4 = . then provider = provider1;
+provider = provider1;
+drop provider1-provider4 _name_;
 run;
-data provider_id2;
+data ccw.providers1;
 set provider_id1;
-drop provider1-provider4 _NAME_;
 run;
 
 /*************************************************************/

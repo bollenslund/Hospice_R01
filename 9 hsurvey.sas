@@ -286,7 +286,7 @@ ods rtf close;
 proc sql;
 create table ccw.Final_hosp_county
 as select *
-from ccw.Final_hs_mb_mp_op_dhc_dod_cc_p a
+from ccw.Final_hs_mb_mp_op_dhc_dod_cc a
 left join ccw.hsurvey_r01_1 b
 on a.pos1 = b.pos1;
 quit;
