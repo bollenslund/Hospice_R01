@@ -141,7 +141,7 @@ run;
 proc sql;
 create table test_dod as select a.*, b.dod_new as dod_rg, b.dod_source as dod_source_rg from
 eric a left join
-sample_dod_3 b
+ccw.sample_dod_3 b
 on a.bene_id=b.bene_id;
 quit;
 
