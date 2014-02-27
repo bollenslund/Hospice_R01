@@ -558,7 +558,14 @@ run;
 /*only keep beneficiary ids that are in the final sample list created from mbs criteria*/
 proc sql;
 create table final_hs as select * from hs_stays
-where bene_id in (select * from final_sample);
+where bene_id in (select bene_id from final_sample);
+quit;
+proc sql;
+create table final_hs1
+as select *
+from final_hs a
+left join final_sample b
+on a.bene_id = b.bene_id;
 quit;
 
 proc freq data=final_hs;

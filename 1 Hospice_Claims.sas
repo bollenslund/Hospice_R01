@@ -661,7 +661,7 @@ proc sql;
 		create table macro3a
 		as select *
 		from macro3 a
-		left join provider_id2 b
+		left join provider_id1 b
 		on a.bene_id = b.bene_id;
 quit;
 
