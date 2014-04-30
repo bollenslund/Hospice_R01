@@ -244,6 +244,12 @@ run;
 proc freq data=ccw.hsurvey;
 table ssastate_08 ssacoun_08;
 run;
+
+proc contents data=ccw.hsurvey; run;
+
+proc freq data=ccw.hsurvey;
+table open_access chemo tpn trnsfusion intracath pall_radiat no_fam_cg tube_feed /missprint;
+run;
 /*create combined state, county ssa code in the survey dataset
 for merging in the county level data from the AHRF*/
 proc sql;
@@ -291,3 +297,8 @@ left join ccw.hsurvey_r01_1 b
 on a.provider_id = b.pos1;
 quit;
 
+proc contents data=ccw.Final_hosp_county; run;
+
+proc export data=ccw.Final_hosp_county 
+outfile="J:\Geriatrics\Geri\Hospice Project\Hospice\working\Final_hosp_county.dta" replace;
+run;
