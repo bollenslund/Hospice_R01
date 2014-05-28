@@ -299,6 +299,3 @@ quit;
 
 proc contents data=ccw.Final_hosp_county; run;
 
-proc export data=ccw.Final_hosp_county 
-outfile="J:\Geriatrics\Geri\Hospice Project\Hospice\working\Final_hosp_county.dta" replace;
-run;

@@ -594,14 +594,20 @@ If chronic conditions variables are missing then there were no dx codes present 
 in the 12 months prior to hospice enrollment*/
 
 
-/*merge with the master beneficary summary data file*/
+/*merge with the overall project dataset including the hospice survey*/
 proc sql;
-create table ccw.mb_final_cc as select * from
-ccw.mb_final a left join
+create table ccw.overall_ds_add_cc as select * from
+ccw.Final_hosp_county a left join
 ccw.chronic_conditions_12m b
 on a.bene_id=b.bene_id;
 quit;
 
-proc contents data=ccw.mb_final_cc;
+ods rtf file="J:\Geriatrics\Geri\Hospice Project\output\proc_contents_overall_ds.rtf";
+proc contents data=ccw.overall_ds_add_cc;
+run;
+ods rtf close;
+
+proc export data=ccw.overall_ds_add_cc
+outfile="J:\Geriatrics\Geri\Hospice Project\Hospice\working\Final_hosp_county.dta" replace;
 run;
 
