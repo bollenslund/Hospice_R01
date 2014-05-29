@@ -19,12 +19,17 @@ libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 
 /*bring in all factors needed to calculate date of death
 Start with the dataset created in the hsurvey.sas
-dod_clean = death date from the MBS file*/
+dod_clean = death date from the MBS file
+BENE_DEATH_DATE = processed date of death (dod) from mb12mosforward.sas code cleaning the mbs file*/
 data test;
 set ccw.Final_hs_mb_ip_snf_op_dhc (keep = bene_id BENE_DEATH_DATE start end disenr hs1_death discharge start2-start21 end2-end21 discharge2-discharge21 ip_end1-ip_end39 ip_death1-ip_death39 snf_end1-snf_end12 snf_death1-snf_death12);
+ind_dod_mbs=0;
+if BENE_DEATH_DATE~=. then ind_dod_mbs=1 ;
 run;
-/*A total of 34,017 people do not have a date of death in MBS*/
+/*A total of 34,017???? Eric please check this, I'm getting 10317 with no mbs dod 
+people do not have a date of death in MBS*/
 proc freq data=test;
+table ind_dod_mbs;
 table ddiff_1 dod_clean;
 run;
 /*changing name. Make indicator variable.
@@ -33,12 +38,14 @@ death_claim is categorical variable indicating source of final death date
 data death;
 set test;
 rename bene_death_date = dod_clean;
-if hs1_death=0 and end = '31DEC2010'd then disenr = 0; /*FIXED THIS IN HOSPICE*/
+/*should this updating disenr still be done?*/
+if hs1_death=0 and end = '31DEC2010'd then disenr = 0; /*FIXED THIS IN HOSPICE*/ /*should this updating disenr still be done?*/
 run;
 data death0;
 set death;
 if dod_clean ~=. then death_claim = 1;
 diff = dod_clean - end;
+/*should this updating disenr still be done?*/
 if disenr = 1 and diff <= 0 and diff~=. then do;disenr = 0;dod_clean = end;end; 
 run;
 
@@ -46,7 +53,8 @@ proc freq data=death0;
 table death_claim disenr;
 run;
 
-/*For claims where discharge code from hospice claims indicates died in hospice,
+/*For claims where discharge code from hospice claims indicates died in hospice
+AND there is no later hospice stay,
 replace date of death variable with discharge date
 discharge2-discharge10 as well as discharge 14 and 21 all have codes 40-42.
 I will give them date of deaths based on their discharge codes
@@ -54,20 +62,20 @@ set death_claim (source final death date) variable = 2 to indicate
 date of death is from hospice claims*/
 data death1;
 set death0;
-if (discharge = 40|discharge = 41|discharge = 42) then do; dod_clean = end; death_claim = 2; end;
-if (discharge2 = 40|discharge2 = 41|discharge2 = 42) then do; dod_clean = end2; death_claim = 2; end;
-if (discharge3 = 40|discharge3 = 41|discharge3 = 42) then do; dod_clean = end3; death_claim = 2; end;
-if (discharge4 = 40|discharge4 = 41|discharge4 = 42) then do; dod_clean = end4; death_claim = 2; end;
-if (discharge5 = 40|discharge5 = 41|discharge5 = 42) then do; dod_clean = end5; death_claim = 2; end;
-if (discharge6 = 40|discharge6 = 41|discharge6 = 42) then do; dod_clean = end6; death_claim = 2; end;
-if (discharge7 = 40|discharge7 = 41|discharge7 = 42) then do; dod_clean = end7; death_claim = 2; end;
-if (discharge8 = 40|discharge8 = 41|discharge8 = 42) then do; dod_clean = end8; death_claim = 2; end;
-if (discharge9 = 40|discharge9 = 41|discharge9 = 42) then do; dod_clean = end9; death_claim = 2; end;
-if (discharge10 = 40|discharge10 = 41|discharge10 = 42) then do; dod_clean = end10; death_claim = 2; end;
-if (discharge14 = 40|discharge14 = 41|discharge14 = 42) then do; dod_clean = end14; death_claim = 2; end;
+if (discharge = 40|discharge = 41|discharge = 42 & start2=.) then do; dod_clean = end; death_claim = 2; end;
+if (discharge2 = 40|discharge2 = 41|discharge2 = 42 & start3=.) then do; dod_clean = end2; death_claim = 2; end;
+if (discharge3 = 40|discharge3 = 41|discharge3 = 42 & start4=.) then do; dod_clean = end3; death_claim = 2; end;
+if (discharge4 = 40|discharge4 = 41|discharge4 = 42 & start5=.) then do; dod_clean = end4; death_claim = 2; end;
+if (discharge5 = 40|discharge5 = 41|discharge5 = 42 & start6=.) then do; dod_clean = end5; death_claim = 2; end;
+if (discharge6 = 40|discharge6 = 41|discharge6 = 42 & start7=.) then do; dod_clean = end6; death_claim = 2; end;
+if (discharge7 = 40|discharge7 = 41|discharge7 = 42 & start8=.) then do; dod_clean = end7; death_claim = 2; end;
+if (discharge8 = 40|discharge8 = 41|discharge8 = 42 & start9=.) then do; dod_clean = end8; death_claim = 2; end;
+if (discharge9 = 40|discharge9 = 41|discharge9 = 42 & start10=.) then do; dod_clean = end9; death_claim = 2; end;
+if (discharge10 = 40|discharge10 = 41|discharge10 = 42 & start11=.) then do; dod_clean = end10; death_claim = 2; end;
+if (discharge14 = 40|discharge14 = 41|discharge14 = 42 & start15=.) then do; dod_clean = end14; death_claim = 2; end;
 if (discharge21 = 40|discharge21 = 41|discharge21 = 42) then do; dod_clean = end21; death_claim = 2; end;
 run;
-/*a total of 13265 now do not have a date of death*/
+/*a total of 13265 now do not have a date of death, I'm getting  10297, need to check this*/
 proc freq data=death1;
 table dod_clean death_claim;
 run;
