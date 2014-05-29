@@ -64,7 +64,7 @@ if prin_diag_cat = 16 then prin_diag_cat1 = 6;
 /*CC*/
 if TOT_GRP = 0 then CC_grp = 0;
 if TOT_GRP = 1 then CC_grp = 1;
-if TOT_GRP = 2 then CC_grp = 2;
+if TOT_GRP > 1 then CC_grp = 2;
 run;
 
 proc format;
@@ -242,9 +242,44 @@ data table3;
 set table2;
 totalcosts = sum(totalcost1, totalcost2, totalcost3, totalcost4, totalcost5, totalcost6, totalcost7, totalcost8, totalcost9, totalcost10, totalcost11, totalcost12, totalcost13, totalcost14,
 totalcost15, totalcost16, totalcost17, totalcost18, totalcost19, totalcost20, totalcost21, dme_cost, hha_cost, carr_cost, ip_tot_cost, snf_cost, op_cost);
-logtotalcosts = log(totalcosts + 1);
-run;
 
+totalcosts_hospice = sum(totalcost1, totalcost2, totalcost3, totalcost4, totalcost5, totalcost6, totalcost7, totalcost8, totalcost9, totalcost10, totalcost11, totalcost12, totalcost13, totalcost14,
+totalcost15, totalcost16, totalcost17, totalcost18, totalcost19, totalcost20, totalcost21);
+
+totalcosts_nonhospice = sum(dme_cost, hha_cost, carr_cost, ip_tot_cost, snf_cost, op_cost);
+
+logtotalcosts = log(totalcosts + 1);
+logtotalcosts_hospice = log(totalcosts_hospice + 1);
+logtotalcosts_nonhospice = log(totalcosts_nonhospice + 1);
+end_date = BENE_DEATH_DATE;
+if end_date = . then end_date = '31DEC2010'd;
+num_of_days = end_date - start + 1;
+avg_exp_perday = totalcosts/total_los;
+log_avg_exp = log(avg_exp_perday + 1);
+avg_exp_tilldeath = totalcosts/num_of_days;
+log_exp_tilldeath = log(avg_exp_tilldeath + 1);
+num_of_days_nonhospice = num_of_days - total_los;
+hospice_exp = totalcosts_hospice / total_los;
+other_exp = totalcosts_nonhospice / num_of_days_nonhospice;
+run;
+data table3_test;
+set table3;
+humpnumber = 1;
+if avg_exp_tilldeath > 450 then humpnumber = 2;
+nonhospice = 0;
+if logtotalcosts_nonhospice > 0 then nonhospice = 1;
+less_than_normal = 0;
+if avg_exp_tilldeath < 150 then less_than_normal = 1;
+less_than_normal1 = 0;
+if avg_exp_perday < 150 then less_than_normal1 = 1;
+run;
+data table3_test1;
+set table3;
+if avg_exp_tilldeath > 1000;
+run;
+proc freq data=table3;
+table num_of_days;
+run;
 ods rtf body = "J:\Geriatrics\Geri\Hospice Project\exp.rtf";
 proc univariate data=table3;
 var totalcosts;
@@ -255,6 +290,51 @@ var logtotalcosts;
 histogram;
 run;
 ods rtf close;
+ods rtf body = "N:\Documents\Downloads\Melissa\avgcost.rtf";
+proc univariate data=table3;
+var avg_exp_perday;
+histogram;
+run;
+proc univariate data=table3;
+var log_avg_exp;
+histogram;
+run;
+ods rtf close;
+ods rtf body = "N:\Documents\Downloads\Melissa\avgexp_disenr.rtf";
+proc univariate data=table3;
+class disenr;
+var avg_exp_tilldeath;
+histogram;
+run;
+proc univariate data=table3;
+class disenr;
+where avg_exp_tilldeath < 150;
+var avg_exp_tilldeath;
+histogram;
+run;
+ods rtf close;
+
+proc ttest data=table3_test;
+class humpnumber;
+var logtotalcosts_hospice;
+run;
+proc freq data=table3_test;
+table humpnumber*region / chisq;
+run;
+proc freq data=table3_test;
+table less_than_normal1;
+run;
+data not_normal;
+set table3_test;
+if less_than_normal1 = 1;
+if avg_exp_tilldeath < 120 then i = 1;
+run;
+proc univariate data=not_normal;
+var avg_exp_tilldeath;
+histogram;
+run;
+
+
 
 /*obtaining the mean and median of costs*/
 proc means data=table3 n mean median;
@@ -271,6 +351,20 @@ proc npar1way data=table3 wilcoxon;
 class open_access;
 var totalcosts;
 run;
+
+proc means data=table3 n mean median;
+class open_access;
+var avg_exp_perday;
+run;
+proc ttest data=table3;
+class open_access;
+var log_avg_exp;
+run;
+proc npar1way data=table3 wilcoxon;
+class open_access;
+var totalcosts;
+run;
+
 /*2x2 table for those who have ED visits greater or equal to 1*/
 proc freq data=table3;
 table open_access*ip_ed_visit_ind / chisq;
@@ -343,7 +437,16 @@ where hosp_adm_cnt ~=0;
 class open_access;
 var hosp_adm_cnt;
 run;
-
+proc freq data=table3;
+table open_access*hosp_adm_ind / chisq;
+run;
+data missing;
+set table3;
+if open_access = .;
+run;
+proc freq data=missing;
+table POS1;
+run;
 /*poisson for the number of days a person was in the hospital*/
 proc genmod data=table3;
 class open_access / param = glm;
@@ -362,23 +465,182 @@ if totalcosts = 0;
 run;
 /*these people have charges. Total of 308*/
 
+/*total patients column*/
+proc means data=table3 n mean median min max;
+var totalcosts;
+run;
+proc means data=table3 n mean median min max;
+var avg_costs;
+run;
+proc freq data=table3;
+table ip_ed_visit_ind / chisq;
+run;
+proc means data = table3 n mean median min max;
+where ip_ed_visit_cnt ~= 0;
+var ip_ed_visit_cnt;
+run;
+proc freq data=table3;
+table icu_stay_ind / chisq;
+run;
+proc means data = table3 n mean median min max;
+where icu_stay_cnt ~= 0;
+var icu_stay_cnt;
+run;
+proc freq data=table3;
+table hosp_adm_ind / chisq;
+run;
+proc means data = table3 n mean median min max;
+class open_access;
+where hosp_adm_cnt~= 0;
+var hosp_adm_cnt;
+run;
+proc means data = table3 n mean median min max;
+class open_access;
+where hosp_adm_days~= 0;
+var hosp_adm_days;
+run;
+
+proc univariate data=table3;
+var num_of_days;
+histogram;
+run;
 
 
 
-TOT_GRP (total CCI groups per record)
-op_visit (total number of outpatient visits)
-op_ed_count (total number of outpatient ED visits)
-op_cost (total outpatient costs)
-snf_adm_ind (Admission into SNF indicator)
-snf_adm_days (total number of SNF days)
-snf_adm_cnt (number of admissions)
-snf_cost (SNF total cost)
-hosp_adm_cnt (number of admissions to Hospital)
-ip_ed_visit_cnt (total number of inpatient visits)
-hosp_adm_days (number of days)
-hosp_death (death in hospital)
-icu_stay_cnt (number of stays in icu)
-icu_stay_days (number of days in icu)
-ip_tot_cost (total costs in inpatient)
-total_651 (total number in routine home care)
-total_656 (general inpatient care hospice services)
+
+data table4;
+set table3;
+run;
+
+proc contents data=table4;
+run;
+proc contents data=table4 varnum;
+run;
+
+ods rtf body = "N:\Documents\Downloads\Melissa\preferredPractice.rtf";
+proc freq data=table4;
+table crisis_mgt;
+run;
+proc freq data=table_crisis_miss;
+table POS1;
+run;
+proc freq data=table4;
+table monitor_pan;
+run;
+proc freq data=missing_pan;
+table POS1;
+run;
+proc freq data=table4;
+table monitor_ax;
+run;
+proc freq data=missing_ax;
+table pos1;
+run;
+proc freq data=table4;
+table monitor_con;
+run;
+proc freq data=missing_con;
+table pos1;
+run;
+proc freq data=table4;
+table monitor_del;
+run;
+proc freq data=missing_del;
+table pos1;
+run;
+proc freq data=table4;
+table monitor_dep;
+run;
+proc freq data=missing_dep;
+table pos1;
+run;
+proc freq data=table4;
+table monitor_dys;
+run;
+proc freq data=missing_dys;
+table pos1 ;
+run;
+proc freq data=table4;
+table monitor_fat;
+run;
+proc freq data=missing_fat;
+table pos1;
+run;
+proc freq data=table4;
+table monitor_nau;
+run;
+proc freq data=missing_nau;
+table pos1;
+run;
+proc freq data=table4;
+table fampref goalscare;
+run;
+proc freq data=table4;
+table advancedir legsurrogate patpref;
+run;
+ods rtf close;
+
+data table_crisis_miss;
+set table4;
+if crisis_mgt = .;
+run;
+proc freq data=table_crisis_miss;
+table POS1;
+run;
+data missing_pan;
+set table4;
+if monitor_pan = .;
+run;
+proc freq data=missing_pan;
+table POS1;
+run;
+data missing_ax;
+set table4;
+if monitor_ax = .;
+run;
+proc freq data=missing_ax;
+table POS1;
+run;
+data missing_con;
+set table4;
+if monitor_con = .;
+run;
+proc freq data=missing_con;
+table POS1;
+run;
+data missing_del;
+set table4;
+if monitor_del = .;
+run;
+proc freq data=missing_del;
+table POS1;
+run;
+data missing_dep;
+set table4;
+if monitor_dep = .;
+run;
+proc freq data=missing_dep;
+table pos1;
+run;
+data missing_dys;
+set table4;
+if monitor_dys = .;
+run;
+proc freq data=missing_dys;
+table POS1;
+run;
+data missing_fat;
+set table4;
+if monitor_fat = .;
+run;
+proc freq data=missing_fat;
+table POS1;
+run;
+data missing_nau;
+set table4;
+if monitor_nau = .;
+run;
+proc freq data=missing_nau;
+table POS1;
+run;
+
