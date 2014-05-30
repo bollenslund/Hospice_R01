@@ -47,46 +47,24 @@ run;
 
 /*identifies beneficiaries with first claim prior to Sept 2008
 these beneficiaries should be excluded from the sample*/
-data indicator;
+data indicator (keep = bene_id indic);
         set hospice_base2;
                 if indic2 = 1 and clm_from_dt < '01SEP2008'd;
                 indic = 1;
-run;
-data indicator1;
-        set indicator (keep = bene_id indic);
 run;
 
 /*assigns the date indicator for exclusion to all claims for the bid*/
 proc sql;
 	create table hospice_base3
-    as select *
+    as select * 
     from hospice_base2 a
-    left join indicator1 b
-    on a.bene_id = b.bene_id;
+    left join indicator b
+    on a.bene_id = b.bene_id
+	where b.indic~= 1;
 quit;
-proc freq data=hospice_base3;
-        table indic2;
-run;
-proc freq data=hospice_base3;
-        where indic2 = 1;
-                table indic;
-run;
 
-/*drops beneficiaries with first claim before Sept 2013*/
-data hospice_base4;
-        set hospice_base3;
-                if indic = 1 then delete;
-run;                        
-proc freq data=hospice_base4;
-        table indic2;
-RUN;
 /*view frequencies of first claim start date by bid*/
-proc freq data=hospice_base4;
-        where indic2 = 1;
-                table clm_from_dt;
-run;
-
-proc sort data=hospice_base4;
+proc sort data=hospice_base3;
         by bene_id clm_from_dt;
 run;
 
@@ -101,25 +79,20 @@ data hospice_revenue;
 run;
 
 
-/*numerical conversion*/
+/*numerical conversion and drop revenue codes that aren't relevant (not hospice level of care)*/
 data hospice_revenue1;
         set hospice_revenue;
         rev_code = REV_CNTR + 0;
+		if rev_code > 649 and rev_code < 660;
 run;
 
-/*drop revenue codes that aren't relevant (not hospice level of care)*/
-data hospice_revenue2;
-        set hospice_revenue1;
-                if rev_code > 649 and rev_code < 660;
-run;
-
-proc sort data=hospice_revenue2 out=hospice_revenue3;
+proc sort data=hospice_revenue1 out=hospice_revenue2;
         by bene_id CLM_ID CLM_THRU_DT;
 run;
 
 /*Creates total days for each revenue code by claim id*/
-data hospice_revenue4;
-        set hospice_revenue3;
+data hospice_revenue3;
+        set hospice_revenue2;
                 retain tot_650 tot_651 tot_652 tot_655 tot_656 tot_657;
                         by bene_id CLM_id CLM_THRU_DT;
                                 if first.CLM_ID then do;
@@ -150,8 +123,8 @@ data hospice_revenue4;
 run;
 /*keeps just one entry per claim id with the total days 
 for each rev code*/
-data hospice_revenue5;
-        set hospice_revenue4;
+data hospice_revenue4;
+        set hospice_revenue3;
                 by bene_id CLM_id CLM_THRU_DT;
                 tot_652 = tot_652_days;
                 if last.clm_id then output;
@@ -159,8 +132,8 @@ run;
 
 /*Creates total days for each revenue code by beneficiary (across
 all claims in the revenue code files*/
-data hospice_revenue6;
-        set hospice_revenue5;
+data hospice_revenue5;
+        set hospice_revenue4;
                 retain total_650 total_651 total_652 total_655 total_656 total_657;
                         by bene_id;
                                 if first.bene_id then do;
@@ -188,15 +161,15 @@ data hospice_revenue6;
 run;
 
 /*keeps just the final observation with the totals*/
-data hospice_revenue7;
-        set hospice_revenue6;
+data hospice_revenue6;
+        set hospice_revenue5;
                 by bene_id CLM_id CLM_THRU_DT;
                 if last.bene_id then output;
 run;
 
 /*creates dataset with just the beneficiary ID and revenue code day totals*/
 data total_rev_center;
-        set hospice_revenue7 (keep = bene_id total_650 total_651 total_652 total_655 total_656 total_657);
+        set hospice_revenue6 (keep = bene_id total_650 total_651 total_652 total_655 total_656 total_657);
 run;
 
 
