@@ -736,30 +736,12 @@ run;
 proc freq data=total_los;
 table discharge;
 run;
-/*create variable for hospice disenrollment - for first hospice enrollment*/
-data disenroll_1;
-set total_los;
-hs1_death=0;
-if (discharge=40|discharge=41|discharge=42)then hs1_death=1;
-run;
-
-data disenroll_2;
-set disenroll_1;
-disenr = .;
-if count_hs_stays>1 then disenr=1;
-if (count_hs_stays=1 and hs1_death=1) then disenr=0;
-if (count_hs_stays=1 and hs1_death=0) then disenr=1;
-if hs1_death=0 and end = '31DEC2010'd then disenr = 0;
-run;
-proc freq;
-table disenr /missprint;
-run;
 
 /*create clean gender, age and race, ethnicity variables
 These variables will be replaced using the mbs dataset, just here to look
 at demographics before merge with mbs is complete*/
 data clean_1;
-set disenroll_2;
+set total_los;
 /*female*/
 female = .;
 if gndr_cd=1 then female=0;
@@ -801,9 +783,6 @@ run;
 data ccw.hs_stays_cleaned;
         set clean_1;
 		drop stay_los2-stay_los21; 
-run;
-proc freq data=ccw.hs_stays_cleaned;
-table disenr;
 run;
 ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\hospice.rtf';
 proc contents data=ccw.hs_stays_cleaned varnum;

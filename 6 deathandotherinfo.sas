@@ -22,7 +22,7 @@ Start with the dataset created in the hsurvey.sas
 dod_clean = death date from the MBS file
 BENE_DEATH_DATE = processed date of death (dod) from mb12mosforward.sas code cleaning the mbs file*/
 data test;
-set ccw.Final_hs_mb_ip_snf_op_dhc (keep = bene_id BENE_DEATH_DATE start end disenr hs1_death discharge start2-start21 end2-end21 discharge2-discharge21 ip_end1-ip_end39 ip_death1-ip_death39 snf_end1-snf_end12 snf_death1-snf_death12);
+set ccw.Final_hs_mb_ip_snf_op_dhc (keep = bene_id BENE_DEATH_DATE start end count_hs_stays hs1_death discharge start2-start21 end2-end21 discharge2-discharge21 ip_end1-ip_end39 ip_death1-ip_death39 snf_end1-snf_end12 snf_death1-snf_death12);
 ind_dod_mbs=0;
 if BENE_DEATH_DATE~=. then ind_dod_mbs=1 ;
 run;
@@ -30,7 +30,6 @@ run;
 people do not have a date of death in MBS*/
 proc freq data=test;
 table ind_dod_mbs;
-table ddiff_1 dod_clean;
 run;
 /*changing name. Make indicator variable.
 death_claim is categorical variable indicating source of final death date
@@ -38,11 +37,30 @@ death_claim is categorical variable indicating source of final death date
 data death;
 set test;
 rename bene_death_date = dod_clean;
-/*should this updating disenr still be done?*/
-if hs1_death=0 and end = '31DEC2010'd then disenr = 0; /*FIXED THIS IN HOSPICE*/ /*should this updating disenr still be done?*/
 run;
-data death0;
+
+
+data disenroll_1;
 set death;
+hs1_death=0;
+if (discharge=40|discharge=41|discharge=42)then hs1_death=1;
+run;
+
+data disenroll_2;
+set disenroll_1;
+disenr = .;
+if count_hs_stays>1 then disenr=1;
+if (count_hs_stays=1 and hs1_death=1) then disenr=0;
+if (count_hs_stays=1 and hs1_death=0) then disenr=1;
+if hs1_death=0 and end = '31DEC2010'd then disenr = 0;
+run;
+proc freq;
+table disenr /missprint;
+run;
+/*paste*/
+
+data death0;
+set disenroll_2;
 if dod_clean ~=. then death_claim = 1;
 diff = dod_clean - end;
 /*should this updating disenr still be done?*/
