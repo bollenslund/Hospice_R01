@@ -60,6 +60,10 @@ data medpar2;
 	if ADMSN_DT > start;
 run;
 
+proc freq data=medpar2;
+table MEDPAR_YR_NUM;
+run;
+
 /*************************************************************************/
 /*    Identify ICU and ED use in inpatient claims                        */
 /*************************************************************************/
@@ -660,6 +664,13 @@ ip_ed_visit_ind*ip_ed_visit_cnt
 icu_stay_ind*icu_stay_cnt
 hosp_adm_ind*hosp_death
 admit_pre12m;
+run;
+
+proc means data=ip_sample_3 n mean median min max;
+var ip_tot_cost;
+run;
+proc means data=ccw.ip_sample n mean median min max;
+var ip_tot_cost;
 run;
 
 /*save dataset*/
