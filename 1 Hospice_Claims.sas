@@ -84,6 +84,7 @@ data hospice_revenue1;
         set hospice_revenue;
         rev_code = REV_CNTR + 0;
 		if rev_code > 649 and rev_code < 660;
+		if REV_CNTR_DT < '01SEP2008'd then delete;
 run;
 
 proc sort data=hospice_revenue1 out=hospice_revenue2;
@@ -181,7 +182,7 @@ of unique hospice stays       */
 /*********************************************************************/
 /*********************************************************************/
 
-proc sort data=hospice_base4 out=hospice_base5;
+proc sort data=hospice_base3 out=hospice_base5;
         by bene_id clm_from_dt clm_thru_dt;
 run;
 
