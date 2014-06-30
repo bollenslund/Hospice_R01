@@ -836,6 +836,7 @@ where hosp_adm_days > 0 and n_pt_nh = 0;
 class monitor_cat2;
 var hosp_adm_days;
 run;
+monitor_pan
 proc anova data=table4;
 where hosp_adm_days > 0 and n_pt_nh = 0;
 format monitor_cat2 monfmt2f.;
@@ -843,3 +844,76 @@ class monitor_cat2;
 model hosp_adm_days=monitor_cat2;
 run;
 quit;
+
+proc freq data=table4;
+table monitor_ax monitor_con monitor_del monitor_dep monitor_dys monitor_fat monitor_nau;
+run;
+
+data table5;
+set table4;
+
+symptom_cat = 0;
+if monitor_ax = 1 and monitor_con = 1 and monitor_del = 1
+and monitor_dep = 1 and monitor_dys = 1 and monitor_fat = 1
+and monitor_nau = 1 then symptom_cat = 1;
+if monitor_ax = 2 and monitor_con = 2 and monitor_del = 2
+and monitor_dep = 2 and monitor_dys = 2 and monitor_fat = 2
+and monitor_nau = 2 then symptom_cat = 2;
+if monitor_ax = 3 and monitor_con = 3 and monitor_del = 3
+and monitor_dep = 3 and monitor_dys = 3 and monitor_fat = 3
+and monitor_nau = 3 then symptom_cat = 3;
+
+symptom_cat1 = 0;
+if monitor_ax = 1 and monitor_con = 1 and monitor_del = 1
+and monitor_dep = 1 and monitor_dys = 1 and monitor_fat = 1
+and monitor_nau = 1 then symptom_cat1 = 1;
+if (monitor_ax = 1 or monitor_ax = 2) and (monitor_con = 1 or monitor_con = 2) and (monitor_del = 1 or monitor_del = 2)
+and (monitor_dep = 1 or monitor_dep = 2) and (monitor_dys = 1 or monitor_dys = 2) and (monitor_fat = 1 or monitor_fat = 2)
+and (monitor_nau = 1 or monitor_nau = 2) and symptom_cat1 ~= 1 then symptom_cat1 = 2;
+if monitor_ax = 2 and monitor_con = 2 and monitor_del = 2
+and monitor_dep = 2 and monitor_dys = 2 and monitor_fat = 2
+and monitor_nau = 2 then symptom_cat1 = 3;
+if (monitor_ax = 2 or monitor_ax = 3) and (monitor_con = 2 or monitor_con = 3) and (monitor_del = 2 or monitor_del = 3)
+and (monitor_dep = 2 or monitor_dep = 3) and (monitor_dys = 2 or monitor_dys = 3) and (monitor_fat = 2 or monitor_fat = 3)
+and (monitor_nau = 2 or monitor_nau = 3) and symptom_cat1 ~= 3 then symptom_cat1 = 4;
+if monitor_ax = 3 and monitor_con = 3 and monitor_del = 3
+and monitor_dep = 3 and monitor_dys = 3 and monitor_fat = 3
+and monitor_nau = 3 then symptom_cat1 = 5;
+if monitor_ax = 3 and monitor_con = 3 and (monitor_del = 3 or monitor_del = 4) and (monitor_dep = 3 or monitor_dep = 4) 
+and monitor_dys = 3 and (monitor_fat = 3 or monitor_fat = 4) and (monitor_nau = 3 or monitor_nau = 4) and symptom_cat1 ~= 5 
+then symptom_cat1 = 6;
+
+
+symptom_cat2 = 0;
+if monitor_ax = 1 or monitor_con = 1 or monitor_del = 1
+or monitor_dep = 1 or monitor_dys = 1 or monitor_fat = 1
+or monitor_nau = 1 then symptom_cat1 = 2;
+
+if monitor_ax = 1 and monitor_con = 1 and monitor_del = 1
+and monitor_dep = 1 and monitor_dys = 1 and monitor_fat = 1
+and monitor_nau = 1 then symptom_cat2 = 1;
+if (monitor_ax = 2 or monitor_con = 2 or monitor_del = 2
+or monitor_dep = 2 or monitor_dys = 2 or monitor_fat = 2
+or monitor_nau = 2) and symptom_cat~= 2 then symptom_cat1 = 4;
+if monitor_ax = 2 and monitor_con = 2 and monitor_del = 2
+and monitor_dep = 2 and monitor_dys = 2 and monitor_fat = 2
+and monitor_nau = 2 then symptom_cat2 = 3;
+if (monitor_ax = 3 or monitor_con = 3 or monitor_del = 3
+or monitor_dep = 3 or monitor_dys = 3 or monitor_fat = 3
+or monitor_nau = 3) and (symptom_cat ~=2 and symptom_cat ~=4)then symptom_cat1 = 6;
+if monitor_ax = 3 and monitor_con = 3 and monitor_del = 3
+and monitor_dep = 3 and monitor_dys = 3 and monitor_fat = 3
+and monitor_nau = 3 then symptom_cat2 = 5;
+
+run;
+proc freq data=table5;
+table symptom_cat1 symptom_cat2;
+run;
+
+data table_test (keep = POS1 monitor_ax monitor_con monitor_del monitor_dep monitor_dys monitor_fat monitor_nau symptom_cat2);
+set table5;
+if symptom_cat1 = 0;
+run;
+proc freq data=table_test;
+table pos1;
+run;
