@@ -534,6 +534,13 @@ region_5 = (region1=5);
 cancer = 0;
 if prin_diag_cat1 = 1 then cancer = 1;
 
+all_17 = 0;
+if Smech = 1 and Sberev_12_mo = 1  and Sscreen_bd = 1 and SFP_ALL3 = 1 and Sq32predeathplan = 1 and Sfam_satA = 1 and Sber_satA = 1 and Scrisis_mgt = 1
+and Smd_on_call = 1 and Span_EFD = 1 and SSYMP_EFD = 1 and SCORE4 = 1 and SPOC_ADMIT = 1 and SPOC_GOCALL3 = 1 and SIT_SAF_A = 1 and SIT_patsat_A = 1 and Sstandard2 = 1 then all_17 = 1;
+all_10 = 0;
+if Scrisis_mgt = 1 and Smd_on_call = 1 and Span_EFD = 1 and SSYMP_EFD = 1 and SCORE4 = 1 and SPOC_ADMIT = 1 and SPOC_GOCALL3 = 1 and SIT_SAF_A = 1 and SIT_patsat_A = 1 and Sstandard2 = 1 then all_10 = 1;
+
+
 run;
 proc freq data=table5;
 table pan_efd symptom_cat symptom_cat1 symptom_cat2 ownership1 region1 cancer monitor_pan;
@@ -541,7 +548,7 @@ run;
 
 
 %let varlist = 
-symp_efd smd_on_call symp_efd poc_gocall3 fp_all3;
+symp_efd smd_on_call symp_efd poc_gocall3 fp_all3 all_17 all_10;
 %macro freq();
 %let i=1;
 %let var=%scan(&varlist,&i);
@@ -636,124 +643,23 @@ ods html;
 quit;
 %let varlist = 
 symp_efd smd_on_call symp_efd poc_gocall3 fp_all3;
-
-
-
-ods html close;
-ods html;
+%let = female agecat re_white cancer cc_grp ownership1 sizecat region1;
 proc genmod data=table5 descending;
-class pos1 monitor_pan (ref = '3') ip_ed_visit_ind (ref = '0')
+class pos1 ip_ed_visit_ind (ref = '0') symp_efd (ref = '0')
 ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
 cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
 region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = monitor_pan agecat re_white cancer cc_grp ownership1 sizecat
-/dist=bin link=logit type3 wald;
+model ip_ed_visit_ind = pan_efd region1
+/dist=bin link=logit type3 wald ;
 repeated subject=pos1/type=exch;
-estimate "log O.R. Pain" monitor_pan 0 1 0 / exp;
-run;
-proc genmod data=table5 descending;
-class pos1 monitor_pan (ref = '3') icu_stay_ind (ref = '0') 
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = monitor_pan agecat re_white cancer cc_grp ownership1 sizecat
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Pain" monitor_pan 1 -1 / exp;
-run;
-proc genmod data=table5 descending;
-class pos1 monitor_pan (ref = '3') hosp_adm_ind (ref = '0') 
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = monitor_pan agecat re_white cancer cc_grp ownership1 sizecat
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Pain" monitor_pan 1 -1 / exp;
-run;
-proc genmod data=table5 descending;
-class pos1 symptom_cat2 (ref = '2') ip_ed_visit_ind (ref = '0') 
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = symptom_cat2 agecat re_white cancer cc_grp ownership1 sizecat
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Pain" symptom_cat2 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1 symptom_cat2 (ref = '2') icu_stay_ind (ref = '0') 
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = symptom_cat2 agecat re_white cancer cc_grp ownership1 sizecat
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table5 descending;
-class pos1 symptom_cat2 (ref = '2') hosp_adm_ind (ref = '0') 
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = symptom_cat2 agecat re_white cancer cc_grp ownership1 sizecat
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-/*outcomes: ip_ed_visit_ind icu_stay_ind hosp_adm_ind
-main predictor: monitor_pan symptom_cat2
-covariates: 
-*/
-ods html close;
-ods html;
-proc glimmix data=table5 initglm;
-class pos1 monitor_pan ownership1 sizecat region1 agecat;
-model ip_ed_visit_ind = monitor_pan agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist = bin link=logit solution;
-nloptions maxiter = 50 tech=nrridg;
-random intercept / subject = pos1;
-run;
-proc glimmix data=table5 initglm;
-class pos1 monitor_pan ownership1 sizecat region1 agecat;
-model icu_stay_ind = monitor_pan agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist = bin link=logit solution;
-nloptions maxiter = 50 tech=nrridg;
-random intercept / subject = pos1;
-run;
-proc glimmix data=table5 initglm;
-class pos1 monitor_pan ownership1 sizecat region1 agecat;
-model hosp_adm_ind = monitor_pan agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist = bin link=logit solution;
-nloptions maxiter = 50 tech=nrridg;
-random intercept / subject = pos1;
-run;
-proc glimmix data=table5 initglm;
-class pos1 symptom_cat2 ownership1 sizecat region1 agecat;
-model ip_ed_visit_ind = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist = bin link=logit solution;
-nloptions maxiter = 50 tech=nrridg;
-random intercept / subject = pos1;
-run;
-proc glimmix data=table5 initglm;
-class pos1 symptom_cat2 ownership1 sizecat region1 agecat;
-model icu_stay_ind = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist = bin link=logit solution;
-nloptions maxiter = 50 tech=nrridg;
-random intercept / subject = pos1;
-run;
-proc glimmix data=table5 initglm;
-class pos1 symptom_cat2 ownership1 sizecat region1 agecat;
-model hosp_adm_ind = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist = bin oddsratio link=logit solution;
-nloptions maxiter = 50 tech=nrridg;
-random intercept / subject = pos1;
 run;
 
-%let varlist1 = smd_on_call pan_efd symp_efd poc_gocall3 fp_all3;
+%let varlist0 = smd_on_call pan_efd symp_efd poc_gocall3 fp_all3 all_17 all_10;
+%let varlist1 = smd_on_call pan_efd symp_efd poc_gocall3 fp_all3 all_17 all_10;
 /*%let varlist2 = ip_ed_visit_ind hosp_adm_ind icu_stay_ind;*/
 %macro regression();
 %let i = 1;
-%let var=%scan(&varlist1,&i);
+%let var=%scan(&varlist,&i);
 %do %while(&var ne ) ;
 proc genmod data=table5 descending;
 class pos1 ip_ed_visit_ind (ref = '0') &var (ref = '0')
@@ -837,15 +743,13 @@ estimate "log O.R. region (E/W South Central vs. South Atlantic)" region1 0 0 1 
 estimate "log O.R. region (Mountain/Pacific vs. South Atlantic)" region1 0 0 0 1/exp;
 run;
 %let i=%eval(&i+1);
-%let var=%scan(&varlist,&i);
+%let var=%scan(&varlist1,&i);
 %end;
 %mend;
 ods html close;
 ods html;
-ods rtf body = "\\home\users$\leee20\Documents\Downloads\Melissa\covariatetables.rtf";
 %regression;
-ods rtf close;
-%let varlist1 = smd_on_call pan_efd symp_efd poc_gocall3 fp_all3;
+%let varlist1 = smd_on_call pan_efd symp_efd poc_gocall3 fp_all3 all_17 all_10;
 %let varlist2 = ip_ed_visit_ind hosp_adm_ind icu_stay_ind;
 Options symbolgen mlogic mprint mfile;
 %macro freq1();
@@ -894,492 +798,38 @@ ods html;
 %freq1;
 
 
+if mech=. then Smech=0; else Smech=mech;
+if berev_12_mo=. then Sberev_12_mo=0; else Sberev_12_mo=berev_12_mo; 
+if screen_routine=. then Sscreen_routine=0; else Sscreen_routine=screen_routine;
+if screen_bd=. then Sscreen_bd=0; else Sscreen_bd=screen_bd;
+if FP_ALL3=. then SFP_ALL3=0; else SFP_ALL3=FP_ALL3;
+if q32predeathplan=. then Sq32predeathplan=0; else Sq32predeathplan=q32predeathplan;
+if fam_satA=. then Sfam_satA=0; else Sfam_satA=fam_satA;
+if ber_satA=. then Sber_satA=0; else Sber_satA=ber_satA;
+
+if crisis_mgt=. then Scrisis_mgt=0; else Scrisis_mgt=crisis_mgt; 
+if md_on_call=. then Smd_on_call=0; else Smd_on_call=md_on_call;
+if pan_EFD=. then Span_EFD=0; else Span_EFD=pan_EFD; 
+if SYMP_EFD=. then SSYMP_EFD=0; else SSYMP_EFD=SYMP_EFD; 
+if CORE4=. then SCORE4=0; else SCORE4=CORE4; 
+if POC_ADMIT=. then SPOC_ADMIT=0; else SPOC_ADMIT=POC_ADMIT; 
+if POC_GOCALL3=. then SPOC_GOCALL3=0; else SPOC_GOCALL3=POC_GOCALL3; 
+if standard2=. then Sstandard2=0; else Sstandard2=standard2; 
+if IT_SAF_A=. then SIT_SAF_A=0; else SIT_SAF_A=IT_SAF_A; 
+if IT_patsat_A=. then SIT_patsat_A=0; else SIT_patsat_A=IT_patsat_A; 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-ods html close;
-ods html;
-proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') pan_efd (ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = pan_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald ;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd (ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table5 descending;
-class pos1 hosp_adm_ind (ref = '0') pan_efd (ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = pan_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') smd_on_call(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = smd_on_call female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') smd_on_call(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = smd_on_call female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-prin_diag_cat1
-proc genmod data=table5 descending;
-class pos1 hosp_adm_ind (ref = '0') smd_on_call(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = smd_on_call female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-
-proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') symp_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = symp_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" symp_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') symp_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = symp_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" symp_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1 hosp_adm_ind (ref = '0') symp_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = symp_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" symp_efd 1 -1 / exp;
-
-run;
-
-proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') poc_gocall3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = poc_gocall3 female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Patient GOC" poc_gocall3 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') poc_gocall3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = poc_gocall3 female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Patient GOC" poc_gocall3 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1 hosp_adm_ind (ref = '0') poc_gocall3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = poc_gocall3 female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Patient GOC" poc_gocall3 1 -1 / exp;
-run;
-proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') fp_all3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = fp_all3 female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. family GOC" fp_all3 1 -1 / exp;
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') fp_all3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = fp_all3  female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. family GOC" fp_all3 1 -1 / exp;
-run;
-proc genmod data=table5 descending;
-class pos1 hosp_adm_ind (ref = '0') fp_all3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = fp_all3 female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. family GOC" fp_all3 1 -1 / exp;
-run;
-
-
-
-
-
-
-
-
-
-
-
-
-
-ods html close;
-ods html;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" pan_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female agecat re_white cancer cc_grp ownership1 sizecat 
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" pan_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female agecat re_white cancer cc_grp ownership1  region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" pan_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female agecat re_white cancer cc_grp  sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" pan_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female agecat re_white cancer  ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" pan_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female agecat re_white  cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" pan_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female agecat  cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" pan_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" pan_efd 1 -1 / exp;
-
-run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" pan_efd 1 -1 / exp;
-
-run;
-
-
-data table6;
-set table5;
-if prin_diag_cat1 = 4;
-run;
-ods html close;
-ods html;
-proc genmod data=table6 descending;
-class pos1 ip_ed_visit_ind (ref = '0') pan_efd (ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = pan_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald ;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table6 descending;
-class pos1  icu_stay_ind (ref = '0') pan_efd (ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = pan_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table6 descending;
-class pos1 hosp_adm_ind (ref = '0') pan_efd (ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = pan_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table6 descending;
-class pos1 ip_ed_visit_ind (ref = '0') smd_on_call(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = smd_on_call female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table6 descending;
-class pos1  icu_stay_ind (ref = '0') smd_on_call(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = smd_on_call female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-proc genmod data=table6 descending;
-class pos1 hosp_adm_ind (ref = '0') smd_on_call(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
- CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = smd_on_call female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
-
-proc genmod data=table6 descending;
-class pos1 ip_ed_visit_ind (ref = '0') symp_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = symp_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" symp_efd 1 -1 / exp;
-
-run;
-proc genmod data=table6 descending;
-class pos1  icu_stay_ind (ref = '0') symp_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = symp_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" symp_efd 1 -1 / exp;
-
-run;
-proc genmod data=table6 descending;
-class pos1 hosp_adm_ind (ref = '0') symp_efd(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = symp_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Symptoms Every Few Days" symp_efd 1 -1 / exp;
-
-run;
-
-proc genmod data=table6 descending;
-class pos1 ip_ed_visit_ind (ref = '0') poc_gocall3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
- CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = poc_gocall3 female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Patient GOC" poc_gocall3 1 -1 / exp;
-
-run;
-proc genmod data=table6 descending;
-class pos1  icu_stay_ind (ref = '0') poc_gocall3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = poc_gocall3 female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Patient GOC" poc_gocall3 1 -1 / exp;
-
-run;
-proc genmod data=table6 descending;
-class pos1 hosp_adm_ind (ref = '0') poc_gocall3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
- CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = poc_gocall3 female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. Patient GOC" poc_gocall3 1 -1 / exp;
-run;
-proc genmod data=table6 descending;
-class pos1 ip_ed_visit_ind (ref = '0') fp_all3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = fp_all3 female agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. family GOC" fp_all3 1 -1 / exp;
-run;
-proc genmod data=table6 descending;
-class pos1  icu_stay_ind (ref = '0') fp_all3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = fp_all3  female agecat re_white  cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. family GOC" fp_all3 1 -1 / exp;
-run;
-proc genmod data=table6 descending;
-class pos1 hosp_adm_ind (ref = '0') fp_all3(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = fp_all3 female agecat re_white cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-estimate "log O.R. family GOC" fp_all3 1 -1 / exp;
-run;
-
-
-
-
-/************** MELISSA REQUEST ON 8/1/14 *****************/
 proc freq data=table5;
-table prin_diag_cat1;
+table Sberev_12_mo Sberev_12_mo Sscreen_routine screen_routine Sscreen_bd screen_bd SFP_ALL3 FP_ALL3 Sq32predeathplan q32predeathplan Sfam_satA fam_satA Sber_satA ber_satA;
 run;
-proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') smd_on_call(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-prin_diag_cat1 (ref = '1') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = smd_on_call female agecat re_white prin_diag_cat1 cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
+proc freq data=table5;
+table Scrisis_mgt crisis_mgt Smd_on_call md_on_call Span_EFD pan_EFD SSYMP_EFD SYMP_EFD SCORE4 CORE4 SPOC_ADMIT POC_ADMIT SPOC_GOCALL3 POC_GOCALL3 Sstandard2
+standard2 SIT_SAF_A IT_SAF_A SIT_patsat_A IT_patsat_A;
 run;
-proc genmod data=table5 descending;
-class pos1  icu_stay_ind (ref = '0') smd_on_call(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-prin_diag_cat1 (ref = '1') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model icu_stay_ind = smd_on_call female agecat re_white prin_diag_cat1 cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
+data table5;
+set table5;
+run;
+proc freq data=table5;
+table ip_ed_visit_ind*all_17 hosp_adm_ind*all_17 icu_stay_ind*all_17
+ip_ed_visit_ind*all_10 hosp_adm_ind*all_10 icu_stay_ind*all_10 / chisq;
 run;
 
-proc genmod data=table5 descending;
-class pos1 hosp_adm_ind (ref = '0') smd_on_call(ref = '0')
-ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
-prin_diag_cat1 (ref = '1') CC_grp(ref = '0') sizecat(ref = '1') 
-region1 (ref = '3') / param = ref;
-model hosp_adm_ind = smd_on_call female agecat re_white prin_diag_cat1 cc_grp ownership1 sizecat region1
-/dist=bin link=logit type3 wald;
-repeated subject=pos1/type=exch;
-run;
