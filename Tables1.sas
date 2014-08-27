@@ -833,3 +833,15 @@ table ip_ed_visit_ind*all_17 hosp_adm_ind*all_17 icu_stay_ind*all_17
 ip_ed_visit_ind*all_10 hosp_adm_ind*all_10 icu_stay_ind*all_10 / chisq;
 run;
 
+*saves a version with only a few variables to export to Stata;
+data ccw.ltd_vars_for_analysis;
+set ccw.for_analysis(keep= ip_ed_visit_ind hosp_adm_ind icu_stay_ind
+female agecat re_white cancer cc_grp ownership1
+pos1 sizecat region1 smd_on_call pan_efd symp_efd poc_gocall3 fp_all3);
+run;
+
+proc export data=ccw.ltd_vars_for_analysis
+	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\ltd_vars_for_analysis.dta'
+	replace;
+	run;
+
