@@ -845,3 +845,31 @@ proc export data=ccw.ltd_vars_for_analysis
 	replace;
 	run;
 
+
+proc genmod data=table5 descending;
+class pos1 hosp_adm_ind (ref = '0') smd_on_call (ref = '0')
+ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
+cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
+region1 (ref = '3') / param = ref;
+model hosp_adm_ind = smd_on_call female agecat re_white cancer cc_grp ownership1 sizecat region1
+/dist=bin link=logit type3 wald ;
+repeated subject=pos1/type=exch;
+estimate "log O.R. MD on Call" smd_on_call 1 -1 / exp;
+estimate "log O.R. Female" female 1 -1 / exp;
+estimate "log O.R. Age 70-74 vs. <69" agecat 1 0 0 0 0 /exp;
+estimate "log O.R. Age 75-79 vs. <69" agecat 0 1 0 0 0 /exp;
+estimate "log O.R. Age 80-84 vs. <69" agecat 0 0 1 0 0 /exp;
+estimate "log O.R. Age 84+ vs. <69" agecat 0 0 0 1 0 /exp;
+estimate "log O.R. White" re_white 1 -1 /exp;
+estimate "log O.R. Cancer" cancer 1 -1/exp;
+estimate "log O.R. CC Group 1 vs. 0" cc_grp 1 0 0/exp;
+estimate "log O.R. CC Group >1 vs. 0" cc_grp 0 1 0 / exp;
+estimate "log O.R. ownership" ownership1 1 -1/exp;
+estimate "log O.R. Size (250 to <600) vs. <250" sizecat 1 0 0 0/exp;
+estimate "log O.R. size (600 to <1300) vs. <250" sizecat 0 1 0 0 / exp;
+estimate "log O.R. size (1300 or more) vs. <250" sizecat 0 0 1 0 / exp;
+estimate "log O.R. region (New England/MA vs. South Atlantic)" region1 1 0 0 0 0/exp;
+estimate "log O.R. region (E/W North Central vs. South Atlantic)" region1 0 1 0 0 0/exp;
+estimate "log O.R. region (E/W South Central vs. South Atlantic)" region1 0 0 1 0/exp;
+estimate "log O.R. region (Mountain/Pacific vs. South Atlantic)" region1 0 0 0 1/exp;
+run;
