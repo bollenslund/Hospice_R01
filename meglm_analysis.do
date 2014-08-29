@@ -45,6 +45,23 @@ foreach v in `bpvars'{
 tab `v', missing
 }
 
+local region county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 ///
+census_pop_2010 urban_cd
+foreach v in  `region'{
+sum `v', detail
+}
+
+//per email 8/29 variables to control for are hospital beds/1000 residents
+//urban indicator and per captia income
+la var urban_cd "Urban county indicator"
+la def urban_cd 1 "Urban" 0 "Rural"
+la val urban_cd urban_cd
+tab urban_cd, missing
+
+gen hospital_beds_per_res = beds_2009 / census_pop_2010
+sum hospital_beds_per_res, detail
+la var hospital_beds_per_res "Hospital beds per 1000 residents"
+
 gen agecat2 = .
 forvalues i = 1/5{
 replace agecat2 = `i' if agecat=="     `i'"
@@ -108,8 +125,14 @@ glm, eform
 //xtset pos1
 //xtgee hosp_adm_ind smd_on_call `xvars2',family(binomial) link(probit) corr(exchangeable) eform
 
+local xvars3 i.female ib1.agecat2 i.re_white i.cancer ib0.cc_grp ///
+	ib2.ownership1 ib1.sizecat
 
-meglm hosp_adm_ind smd_on_call `xvars2' || region1: || pos1: , family(binomial) link(logit)
+local regvars i.urban_cd hospital_beds_per_res per_cap_inc_2009
+
+meglm hosp_adm_ind smd_on_call `xvars3' `regvars' || region1: || pos1: , family(binomial) link(logit)
+
+estimates save meglm_est, replace
 
 *********************************************************
 log close

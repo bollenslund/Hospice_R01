@@ -837,7 +837,8 @@ run;
 data ccw.ltd_vars_for_analysis;
 set ccw.for_analysis(keep= ip_ed_visit_ind hosp_adm_ind icu_stay_ind
 female agecat re_white cancer cc_grp ownership1
-pos1 sizecat region1 smd_on_call pan_efd symp_efd poc_gocall3 fp_all3);
+pos1 sizecat region1 smd_on_call pan_efd symp_efd poc_gocall3 fp_all3
+county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd);
 run;
 
 proc export data=ccw.ltd_vars_for_analysis
