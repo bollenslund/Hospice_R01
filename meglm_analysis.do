@@ -28,7 +28,7 @@ cd "`datapath'"
 use ltd_vars_for_analysis.dta
 
 compress
-
+/*
 *********************************************************
 local outcomes hosp_adm_ind ip_ed_visit_ind icu_stay_ind
 foreach v in `outcomes'{
@@ -49,7 +49,7 @@ local region county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 ///
 census_pop_2010 urban_cd
 foreach v in  `region'{
 sum `v', detail
-}
+}*/
 
 //per email 8/29 variables to control for are hospital beds/1000 residents
 //urban indicator and per captia income
@@ -89,14 +89,14 @@ la var region1 "Hospice region"
 la def region1 1 "New England/ Mid-Atlantic" 2 "E/W North Central" ///
 	3 "South Atlantic" 4 "E/W South Central" 5 "Mountain/Pacific"
 la val region1 region1
-
+/*
 //replicate means comparison across outcome categories
 foreach v in `bpvars' `xvars'{
 tab `v' hosp_adm_ind, missing
 tab `v' ip_ed_visit_ind, missing
 tab `v' icu_stay_ind, missing
 }
-
+*/
 
 /*sas code trying to replicate
 proc genmod data=table5 descending;
@@ -130,7 +130,8 @@ local xvars3 i.female ib1.agecat2 i.re_white i.cancer ib0.cc_grp ///
 
 local regvars i.urban_cd hospital_beds_per_res per_cap_inc_2009
 
-meglm hosp_adm_ind smd_on_call `xvars3' `regvars' || region1: || pos1: , family(binomial) link(logit)
+meglm hosp_adm_ind smd_on_call `xvars3' `regvars' || region1: || pos1: , ///
+family(binomial) link(logit) diff
 
 estimates save meglm_est, replace
 
