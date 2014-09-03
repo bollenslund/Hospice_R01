@@ -112,18 +112,23 @@ repeated subject=pos1/type=exch;
 type3 = type 3 analysis, provides likelihood ratio tests for each parameter
 wald = wald confidence intervals
 *** /type=exch specifies the correlation matrix structure, exch=exchangeable
-Why did Eric chose this??
-*/
+Per Melissa, it was the best fit on similar analysis before so we used it
+for this initial analysis*/
 
-local xvars2 i.female ib1.agecat2 i.re_white i.cancer ib0.cc_grp ///
+/*local xvars2 i.female ib1.agecat2 i.re_white i.cancer ib0.cc_grp ///
 	ib2.ownership1 ib1.sizecat ib3.region1
 
 glm hosp_adm_ind smd_on_call `xvars2' , family(binomial) link(logit) vce(cluster pos1) 
-glm, eform
+glm, eform*/
 
 //can't run this b/c matsize too small! can't set it > 800 in stata IC
 //xtset pos1
 //xtgee hosp_adm_ind smd_on_call `xvars2',family(binomial) link(probit) corr(exchangeable) eform
+
+//check correlation, from Degenholz, ICC > 0.05 then correlation needs to be accounted for
+loneway hosp_adm_ind pos1 //by hospice
+loneway hosp_adm_ind region1 //by region
+loneway hosp_adm_ind county_state //by county
 
 local xvars3 i.female ib1.agecat2 i.re_white i.cancer ib0.cc_grp ///
 	ib2.ownership1 ib1.sizecat
