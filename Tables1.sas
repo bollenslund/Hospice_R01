@@ -67,6 +67,10 @@ if TOT_GRP = 1 then CC_grp = 1;
 if TOT_GRP > 1 then CC_grp = 2;
 run;
 
+proc freq data=tables;
+table tot_grp;
+run;
+
 proc format;
 value prindiagfmt
         1='NEOPLASMS'
@@ -540,7 +544,13 @@ and Smd_on_call = 1 and Span_EFD = 1 and SSYMP_EFD = 1 and SCORE4 = 1 and SPOC_A
 all_10 = 0;
 if Scrisis_mgt = 1 and Smd_on_call = 1 and Span_EFD = 1 and SSYMP_EFD = 1 and SCORE4 = 1 and SPOC_ADMIT = 1 and SPOC_GOCALL3 = 1 and SIT_SAF_A = 1 and SIT_patsat_A = 1 and Sstandard2 = 1 then all_10 = 1;
 
+/*calculation checks out*/
+ed_visit_ind = 0;
+if op_ed_count > 0 or ip_ed_visit_ind = 1 then ed_visit_ind = 1;
 
+run;
+proc freq data=table5;
+table ip_ed_visit_ind op_ed_count ed_visit_ind;
 run;
 proc freq data=table5;
 table pan_efd symptom_cat symptom_cat1 symptom_cat2 ownership1 region1 cancer monitor_pan;
@@ -555,24 +565,24 @@ symp_efd smd_on_call symp_efd poc_gocall3 fp_all3 all_17 all_10;
 %do %while(&var ne ) ;
 proc freq data=table5; 
 format &var monfmt.;
-table ip_ed_visit_ind*&var / chisq;
+table ed_visit_ind*&var / chisq;
 run;
 proc means data=table5 n mean median min max std;
 format &var monfmt.;
-where ip_ed_visit_cnt > 0;
-var ip_ed_visit_cnt;
+where ed_visit_ind > 0;
+var ed_visit_ind;
 run;
 proc means data=table5 n mean median min max std;
 format &var monfmt.;
-where ip_ed_visit_cnt > 0;
+where ed_visit_ind > 0;
 class &var;
-var ip_ed_visit_cnt;
+var ed_visit_ind;
 run;
 proc anova data=table5;
-where ip_ed_visit_cnt > 0;
+where ed_visit_ind > 0;
 format &var monfmt.;
 class &var;
-model ip_ed_visit_cnt=&var;
+model ed_visit_ind=&var;
 run;
 proc freq data=table5;
 format &var monfmt.;
@@ -645,11 +655,11 @@ quit;
 symp_efd smd_on_call symp_efd poc_gocall3 fp_all3;
 %let = female agecat re_white cancer cc_grp ownership1 sizecat region1;
 proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') symp_efd (ref = '0')
+class pos1 ed_visit_ind (ref = '0') symp_efd (ref = '0')
 ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
 cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
 region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = pan_efd region1
+model ed_visit_ind = pan_efd region1
 /dist=bin link=logit type3 wald ;
 repeated subject=pos1/type=exch;
 run;
@@ -659,14 +669,14 @@ run;
 /*%let varlist2 = ip_ed_visit_ind hosp_adm_ind icu_stay_ind;*/
 %macro regression();
 %let i = 1;
-%let var=%scan(&varlist,&i);
+%let var=%scan(&varlist1,&i);
 %do %while(&var ne ) ;
 proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') &var (ref = '0')
+class pos1 ed_visit_ind (ref = '0') &var (ref = '0')
 ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
 cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
 region1 (ref = '3') / param = ref;
-model ip_ed_visit_ind = &var female agecat re_white cancer cc_grp ownership1 sizecat region1
+model ed_visit_ind = &var female agecat re_white cancer cc_grp ownership1 sizecat region1
 /dist=bin link=logit type3 wald ;
 repeated subject=pos1/type=exch;
 estimate "log O.R. Main Effect" &var 1 -1 / exp;
@@ -689,7 +699,7 @@ estimate "log O.R. region (E/W South Central vs. South Atlantic)" region1 0 0 1 
 estimate "log O.R. region (Mountain/Pacific vs. South Atlantic)" region1 0 0 0 1/exp;
 run;
 proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') &var (ref = '0')
+class pos1 hosp_adm_ind (ref = '0') &var (ref = '0')
 ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
 cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
 region1 (ref = '3') / param = ref;
@@ -716,7 +726,7 @@ estimate "log O.R. region (E/W South Central vs. South Atlantic)" region1 0 0 1 
 estimate "log O.R. region (Mountain/Pacific vs. South Atlantic)" region1 0 0 0 1/exp;
 run;
 proc genmod data=table5 descending;
-class pos1 ip_ed_visit_ind (ref = '0') &var (ref = '0')
+class pos1 icu_stay_ind (ref = '0') &var (ref = '0')
 ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
 cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
 region1 (ref = '3') / param = ref;
@@ -835,14 +845,14 @@ run;
 
 *saves a version with only a few variables to export to Stata;
 data ccw.ltd_vars_for_analysis;
-set ccw.for_analysis(keep= ip_ed_visit_ind hosp_adm_ind icu_stay_ind
+set table5(keep= ip_ed_visit_ind ed_visit_ind hosp_adm_ind icu_stay_ind
 female agecat re_white cancer cc_grp ownership1
 pos1 sizecat region1 smd_on_call pan_efd symp_efd poc_gocall3 fp_all3
 county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd);
 run;
 
 proc export data=ccw.ltd_vars_for_analysis
-	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\ltd_vars_for_analysis.dta'
+	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\ltd_vars_for_analysis1.dta'
 	replace;
 	run;
 
@@ -873,4 +883,8 @@ estimate "log O.R. region (New England/MA vs. South Atlantic)" region1 1 0 0 0 0
 estimate "log O.R. region (E/W North Central vs. South Atlantic)" region1 0 1 0 0 0/exp;
 estimate "log O.R. region (E/W South Central vs. South Atlantic)" region1 0 0 1 0/exp;
 estimate "log O.R. region (Mountain/Pacific vs. South Atlantic)" region1 0 0 0 1/exp;
+run;
+
+proc freq data=table5;
+table female agecat re_white cancer cc_grp ownership1 sizecat region1;
 run;

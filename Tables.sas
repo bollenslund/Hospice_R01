@@ -704,6 +704,9 @@ run;
 main predictor: monitor_pan symptom_cat2
 covariates: 
 */
+proc sort data=table5;
+by descending pan_efd;
+run;
 ods html close;
 ods html;
 proc glimmix data=table5 initglm;
@@ -727,27 +730,31 @@ model hosp_adm_ind = monitor_pan agecat re_white cancer cc_grp ownership1 sizeca
 nloptions maxiter = 50 tech=nrridg;
 random intercept / subject = pos1;
 run;
-proc glimmix data=table5 initglm;
-class pos1 symptom_cat2 ownership1 sizecat region1 agecat;
-model ip_ed_visit_ind = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist = bin link=logit solution;
-nloptions maxiter = 50 tech=nrridg;
-random intercept / subject = pos1;
+proc glimmix data=table5;
+class pos1 pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1;
+model ip_ed_visit_ind (event='1') = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
+/solution dist = bin link=logit ddfm = satterth oddsratio ;
+random intercept / subject = pos1 solution;
+nloptions tech=nrridg;
+ods exclude solutionr;
 run;
-proc glimmix data=table5 initglm;
-class pos1 symptom_cat2 ownership1 sizecat region1 agecat;
-model icu_stay_ind = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist = bin link=logit solution;
-nloptions maxiter = 50 tech=nrridg;
-random intercept / subject = pos1;
+proc glimmix data=table5;
+class pos1 pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1;
+model icu_stay_ind (event='1') = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
+/solution dist = bin link=logit ddfm = satterth oddsratio ;
+random intercept / subject = pos1 solution;
+nloptions tech=nrridg;
+ods exclude solutionr;
 run;
-proc glimmix data=table5 initglm;
-class pos1 symptom_cat2 ownership1 sizecat region1 agecat;
-model hosp_adm_ind = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
-/dist = bin oddsratio link=logit solution;
-nloptions maxiter = 50 tech=nrridg;
-random intercept / subject = pos1;
+proc glimmix data=table5 order=data;
+class pos1 pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1;
+model hosp_adm_ind (event='1') = pan_efd agecat re_white cancer cc_grp ownership1 sizecat region1
+/solution dist = bin link=logit ddfm = satterth oddsratio ;
+random intercept / subject = pos1 solution;
+nloptions tech=nrridg;
+ods exclude solutionr;
 run;
+
 
 %let varlist1 = smd_on_call pan_efd symp_efd poc_gocall3 fp_all3;
 /*%let varlist2 = ip_ed_visit_ind hosp_adm_ind icu_stay_ind;*/
@@ -1282,7 +1289,6 @@ model hosp_adm_ind = symp_efd female agecat re_white cancer cc_grp ownership1 si
 /dist=bin link=logit type3 wald;
 repeated subject=pos1/type=exch;
 estimate "log O.R. Symptoms Every Few Days" symp_efd 1 -1 / exp;
-
 run;
 
 proc genmod data=table6 descending;
