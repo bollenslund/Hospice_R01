@@ -135,10 +135,14 @@ local xvars3 i.female ib1.agecat2 i.re_white i.cancer ib0.cc_grp ///
 
 local regvars i.urban_cd hospital_beds_per_res per_cap_inc_2009
 
-meglm hosp_adm_ind smd_on_call `xvars3' `regvars' || region1: || pos1: , ///
-family(binomial) link(logit) diff
+/* does not converge, flat or discontinuous region encountered message
+meglm hosp_adm_ind /*smd_on_call `xvars3' `regvars'*/ || region1: || pos1: , ///
+family(binomial) link(logit) evaltype(gf0)
 
-estimates save meglm_est, replace
+//estimates save meglm_est, replace*/
+
+gllamm hosp_adm_ind /*smd_on_call `xvars3' `regvars'*/, ///
+	i(pos1 /*region1*/) fam(binom) link(logit) adapt
 
 *********************************************************
 log close
