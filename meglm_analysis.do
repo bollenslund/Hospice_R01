@@ -25,12 +25,12 @@ local logpath J:\Geriatrics\Geri\Hospice Project\output
 log using "`logpath'\meglm_stata_work-LOG.txt", text replace
 
 cd "`datapath'"
-use ltd_vars_for_analysis.dta
+use ltd_vars_for_analysis1.dta
 
 compress
 /*
 *********************************************************
-local outcomes hosp_adm_ind ip_ed_visit_ind icu_stay_ind
+local outcomes hosp_adm_ind ed_visit_ind icu_stay_ind
 foreach v in `outcomes'{
 tab `v', missing
 }
@@ -135,14 +135,18 @@ local xvars3 i.female ib1.agecat2 i.re_white i.cancer ib0.cc_grp ///
 
 local regvars i.urban_cd hospital_beds_per_res per_cap_inc_2009
 
-/* does not converge, flat or discontinuous region encountered message
-meglm hosp_adm_ind /*smd_on_call `xvars3' `regvars'*/ || region1: || pos1: , ///
+/* does not converge, flat or discontinuous region encountered message*/
+meglm ed_visit_ind /*smd_on_call `xvars3' `regvars'*/ || region1: || pos1: , ///
 family(binomial) link(logit) evaltype(gf0)
 
-//estimates save meglm_est, replace*/
+//estimates save meglm_est, replace
 
 gllamm hosp_adm_ind /*smd_on_call `xvars3' `regvars'*/, ///
-	i(pos1 /*region1*/) fam(binom) link(logit) adapt
+	i(pos1 region1) fam(binom) link(logit) adapt
 
+tab ed_visit_ind, missing
+gllamm ed_visit_ind /*smd_on_call `xvars3' `regvars'*/, ///
+	i(pos1 region1) fam(binom) link(logit) adapt	
+	
 *********************************************************
 log close
