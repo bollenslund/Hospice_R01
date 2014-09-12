@@ -25,7 +25,7 @@ local logpath J:\Geriatrics\Geri\Hospice Project\output
 log using "`logpath'\meglm_stata_work-LOG.txt", text replace
 
 cd "`datapath'"
-use ltd_vars_for_analysis1.dta
+/*use ltd_vars_for_analysis1.dta
 
 compress
 /*
@@ -89,6 +89,12 @@ la var region1 "Hospice region"
 la def region1 1 "New England/ Mid-Atlantic" 2 "E/W North Central" ///
 	3 "South Atlantic" 4 "E/W South Central" 5 "Mountain/Pacific"
 la val region1 region1
+
+//save this dataset now that its been compressed, etc.
+//save ltd_vars_for_analysis1_clean.dta, replace
+*/
+use ltd_vars_for_analysis1_clean.dta, replace
+
 /*
 //replicate means comparison across outcome categories
 foreach v in `bpvars' `xvars'{
@@ -135,18 +141,25 @@ local xvars3 i.female ib1.agecat2 i.re_white i.cancer ib0.cc_grp ///
 
 local regvars i.urban_cd hospital_beds_per_res per_cap_inc_2009
 
-/* does not converge, flat or discontinuous region encountered message*/
-meglm ed_visit_ind /*smd_on_call `xvars3' `regvars'*/ || region1: || pos1: , ///
-family(binomial) link(logit) evaltype(gf0)
+/* does not converge, flat or discontinuous region encountered message
+will converge with no covariates and random effect at the region level only (not hospice)
+meglm ed_visit_ind /*smd_on_call `xvars3' `regvars'*/ || region1: /*|| pos1:*/ , ///
+family(binomial) link(logit) evaltype(gf0)*/
 
 //estimates save meglm_est, replace
+local vars hosp_adm_ind pos1 region1
+foreach v in `vars'{
+sum `v', detail
+}
 
-gllamm hosp_adm_ind /*smd_on_call `xvars3' `regvars'*/, ///
+gllamm hosp_adm_ind smd_on_call /*`xvars3' `regvars'*/, ///
 	i(pos1 region1) fam(binom) link(logit) adapt
 
-tab ed_visit_ind, missing
+//gllamm ed_visit_ind , i(region1) fam(binom) link(logit)
+
+/*tab ed_visit_ind, missing
 gllamm ed_visit_ind /*smd_on_call `xvars3' `regvars'*/, ///
-	i(pos1 region1) fam(binom) link(logit) adapt	
+	i(pos1 region1) fam(binom) link(logit) adapt	*/
 	
 *********************************************************
 log close
