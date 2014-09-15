@@ -136,10 +136,10 @@ loneway hosp_adm_ind pos1 //by hospice
 loneway hosp_adm_ind region1 //by region
 loneway hosp_adm_ind county_state //by county
 
-local xvars3 i.female ib1.agecat2 i.re_white i.cancer ib0.cc_grp ///
-	ib2.ownership1 ib1.sizecat
+local xvars3 female agecat2 re_white cancer cc_grp ///
+	ownership1 sizecat
 
-local regvars i.urban_cd hospital_beds_per_res per_cap_inc_2009
+local regvars urban_cd hospital_beds_per_res per_cap_inc_2009
 
 /* does not converge, flat or discontinuous region encountered message
 will converge with no covariates and random effect at the region level only (not hospice)
@@ -147,13 +147,14 @@ meglm ed_visit_ind /*smd_on_call `xvars3' `regvars'*/ || region1: /*|| pos1:*/ ,
 family(binomial) link(logit) evaltype(gf0)*/
 
 //estimates save meglm_est, replace
-local vars hosp_adm_ind pos1 region1
+local vars hosp_adm_ind pos1 region1 smd_on_call `xvars3' `regvars'
 foreach v in `vars'{
 sum `v', detail
 }
 
-gllamm hosp_adm_ind smd_on_call /*`xvars3' `regvars'*/, ///
+gllamm hosp_adm_ind smd_on_call `xvars3' `regvars', ///
 	i(pos1 region1) fam(binom) link(logit) adapt
+estimates save gllamm_est, replace
 
 //gllamm ed_visit_ind , i(region1) fam(binom) link(logit)
 
