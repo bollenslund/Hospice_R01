@@ -35,13 +35,36 @@ local xvars3 female age_70_74 age_75_79 age_80_84 age_gt84 ///
  re_white cancer cc_grp_ind2 cc_grp_ind3 ownership_ind2 ///
  sizecat_ind2 sizecat_ind3 sizecat_ind4
 	 
+local pat_vars female age_70_74 age_75_79 age_80_84 age_gt84 ///
+ re_white cancer cc_grp_ind2 cc_grp_ind3 
+ 
+local hosp_vars ownership_ind2 ///
+ sizecat_ind2 sizecat_ind3 sizecat_ind4
+	 
 local regvars urban_cd hospital_beds_per_res per_cap_inc_2009
 
-//run meqrlogit as for loop for the 5 exposure variables
-//hospices within regions, covariance structure=exchangeable
-foreach expos in smd_on_call /*pan_efd symp_efd  poc_gocall3 fp_all3*/{
+//base model - just coefficient and patient level random error
+meqrlogit hosp_adm_ind
+
+//now add random intercept at the hospice and region levels
+meqrlogit hosp_adm_ind || region1: || pos1:
+
+//add individual level independent variables
+meqrlogit hosp_adm_ind `pat_vars' || region1: || pos1:
+
+
+
+meqrlogit hosp_adm_ind smd_on_call `xvars3' `regvars' || ///
+	region1: || pos1: 
+estimates save meqrlogit_est_smd_on_call, replace
+
+
+*****************************************************************
+//run meqrlogit as for loop for the remaining 4 exposure variables
+//hospices within regions, covariance structure=independent (default)
+foreach expos in /*smd_on_call*/ pan_efd symp_efd  poc_gocall3 fp_all3{
 	meqrlogit hosp_adm_ind `expos' `xvars3' `regvars' || ///
-		region1: || pos1: ///, cov(ex)
+		region1: || pos1: //, cov(ex)
 	estimates save meqrlogit_est_`expos', replace
 }
 

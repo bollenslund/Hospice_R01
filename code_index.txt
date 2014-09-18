@@ -1,12 +1,15 @@
-/*Code index for Hospice R01 Project
-All code kept in github repository Hospice_R01*/
+Code index for Hospice R01 Project
+All code kept in github repository Hospice_R01
+Files are listed in the order in which they should be run
+to build the final dataset
 
+************************************************************
 year_append.sas:
 Takes Claims data files from raw_sas directory and merges 2007-2010
-claims into data files by type of claims data (hospice_base, 
+claims into data files by type of claims data (hospice_base,
 hospice_revenue, etc.)
 
-
+************************************************************
 1 Hospice_Claims.sas:
 Drops beneficiaries that don't have first claim within Sept 2008 and Nov 2009
 Checks for claims that span a single hospice stay and merges claim start and end
@@ -14,7 +17,8 @@ dates, costs
 Merges all revenue code days by beneficiary
 Structures data so there is one line per beneficiary with variables
            for each of their hospice stays
-           
+
+************************************************************
 2 MB12mosforward.sas:
 Processes the master beneficiary summary files to get date of death, demographics and
 location.
@@ -25,16 +29,49 @@ ccw.final_hs_mb
 Creates MBS dataset with hospice stay 1 start and end dates and count of hospice
 stays for use in the medpar claims processing (next step) saved as ccw.for_medpar
 
+************************************************************
 3 medpar.sas:
 Process medpar claims to get two claims datasets:
-1. ccw.ip_claims_clean - Inpatient claims which has start/end dates, costs for each 
-   inpatient claim. Also contains indicator for hospital death and ICU and ED use 
+1. ccw.ip_claims_clean - Inpatient claims which has start/end dates, costs for each
+   inpatient claim. Also contains indicator for hospital death and ICU and ED use
    for each IP claim
 2. ccw.snf - SNF claims with start/end dates and costs for each SNF stay
 Then merges the medpar claims with the already processed datasets
 3. ccw.final_hs_mb_ip_snf - Hospice, MBS, IP and SNF use information merged into
    single dataset
 
+************************************************************
+4 outpat.sas
+Process outpatient claims
+Get variables for emergency department outpatient visits and outpatient costs
+aggregated by date - costs during hospice and after hospice
+1. ccw.outpat_fin - Outpatient information for just observations that meet
+insurance criteria determined in the MB12mosforward.sas code with total OP
+costs, number visits and number ED visits as well as information about
+individual op visit utilization. Categorizes costs as during hospice stays or
+not during hospice stays (inhospice vs posthospice variables
+2. ccw.final_hs_mb_ip_snf_op - OP information added to hospice, MBS, IP
+and SNF information
+
+************************************************************
+dme_hh_carr.sas
+Process remaining claim types (DME, HHA, and Carrier) to get aggregated 
+costs during and after hospice
+1. ccw.dme_cost - DME costs  for individual during and after hospice periods
+2. ccw.hha_cost - Home haealth worker costs
+3. ccw.carr_cost - Carrier closts
+4. ccw.dmehhacarr - Costs for DME, home health and carrier claims by
+each during and after hospice periods and total for each type by beneficiary
+5. ccw.final_hs_mb_ip_snf_op_dhc - Merged with the other claim type dataset
+
+************************************************************
+6 deathandotherinfo.sas
+Creates a clean date of death variable drawing from the hospice claims,
+mbs file and medpar claims datasets
+Merges the dod variable into the ccw.final_mb_cc1 dataset
+
+
+************************************************************
 chronic_conditions.sas:
 Collects diagnosis codes from all claims 12 months before the first hopsice
 enrollment, then creates indicator variables for each of the chronic conditions
@@ -44,18 +81,7 @@ enrollment, then creates indicator variables for each of the chronic conditions
 
 
 
-outpat.sas
-Process outpatient claims
-Get variables for emergency department outpatient visits and outpatietn costs 
-aggregated by date - costs during hospice and after hospice
 
-dme_hh_carr.sas
-Process remaining claim types to get aggregated costs during and after hospice
-
-deathinfo.sas
-Creates a clean date of death variable drawing from the hospice claims, 
-mbs file and medpar claims datasets
-Merges the dod variable into the ccw.final_mb_cc1 dataset
 
 merging_together.sas:
 Creates a single claims dataset with cleaned information from the
