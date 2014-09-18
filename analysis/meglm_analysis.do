@@ -69,34 +69,11 @@ local xvars3 female age_70_74 age_75_79 age_80_84 age_gt84 ///
 local regvars urban_cd hospital_beds_per_res per_cap_inc_2009
 
 /* does not converge, flat or discontinuous region encountered message
-will converge with no covariates and random effect at the region level only (not hospice)
+will converge with no covariates and random effect at the region level only (not hospice)*/
 meglm ed_visit_ind /*smd_on_call `xvars3' `regvars'*/ || region1: /*|| pos1:*/ , ///
-family(binomial) link(logit) evaltype(gf0)*/
+family(binomial) link(logit) evaltype(gf0)
 
-//estimates save meglm_est, replace
-
-**********************************************************************
-//variable check before run gllamm model, drop observations where missing
-local vars hosp_adm_ind pos1 region1 smd_on_call pan_efd symp_efd  ///
-	poc_gocall3 fp_all3 `xvars3' `regvars'
-	
-foreach v in `vars'{
-sum `v', detail
-drop if `v'==.
-}
-
-//run gllamm as for loop for the 5 exposure variables
-foreach expos in smd_on_call pan_efd symp_efd  poc_gocall3 fp_all3{
-	gllamm hosp_adm_ind `expos' `xvars3' `regvars', ///
-		i(pos1 region1) fam(binom) link(logit) adapt
-	estimates save gllamm_est_`expos', replace
-}
-
-//gllamm ed_visit_ind , i(region1) fam(binom) link(logit)
-
-/*tab ed_visit_ind, missing
-gllamm ed_visit_ind /*smd_on_call `xvars3' `regvars'*/, ///
-	i(pos1 region1) fam(binom) link(logit) adapt	*/
+estimates save meglm_est, replace
 	
 *********************************************************
 log close
