@@ -49,17 +49,53 @@ local hosp_vars ownership_ind2 ///
 	 
 local regvars urban_cd hospital_beds_per_res per_cap_inc_2009
 
+//drop obs where any of the variables are missing
+foreach v in `pat_vars' `hosp_vars' `regvars' {
+        drop if `v'==.
+        }
+
 //base model - just coefficient and patient level random error
-logit hosp_adm_ind
+glm hosp_adm_ind, family(binomial) link(logit)
+outreg, store(base1) stats(b se) nostars  summstat(ll) ///
+ctitles("","Model 1: Null") ///
+rtitles("Level 1 Patient Intercept") ///
+summtitle("Log likelihood")
 
 //add random intercept at hospice level
 meqrlogit hosp_adm_ind || pos1:
+outreg, keep(eq1:_cons) stats(b se) nostars  summstat(ll) ///
+ctitles("","Model 2: Hospice Random Int")
+
+mat V=e(V)
+
+
+/*
+
+outreg, store(base2) stats(b se) nostars  summstat(ll) ///
+ctitles("","Hospice Random Int") rtitles("Level 1 Patient intercept")  ///
+rtitles("Level 1 Patient Intercept") ///
+summtitle("Log likelihood")
+
 
 //add random intercept at region level
 meqrlogit hosp_adm_ind || region1:
+outreg, store(base3) stats(b se) nostars  summstat(ll) ///
+ctitles("","Hospice Random Int") rtitles("Level 1 Patient intercept" \"" \ ///
+"Level 3 Region Random intercept"\ ""\ ""\ "Log likelihood")
 
 //now add random intercept at the hospice and region levels
 meqrlogit hosp_adm_ind || region1: || pos1:
+outreg, store(base4) stats(b se) nostars  summstat(ll) ///
+ctitles("","Hospice Random Int") rtitles("Level 1 Patient intercept" \"" \ ///
+"Level 3 Region Random intercept"\ ""\ ""\ "Log likelihood")
+
+/*, store(base4) stats(b se) nostars  summstat(ll) ///
+ctitles("","Hospice Random Int") rtitles("Level 1 Patient intercept" \"" \ ///
+"Level 3 Region Random intercept"\ ""\ ""\ "Log likelihood")
+
+outreg, replay(base1) merge(base2) store(table1)
+outreg, replay(table1) merge(base3) store(table2)
+outreg, replay(table2) merge(base4) store(table3)
 
 //add individual level (level 1) independent variables
 meqrlogit hosp_adm_ind `pat_vars' || region1: || pos1:
@@ -68,13 +104,16 @@ meqrlogit hosp_adm_ind `pat_vars' || region1: || pos1:
 //add individual level (level 1) independent variables
 meqrlogit hosp_adm_ind `pat_vars' `hosp_vars' || region1: || pos1:
 
+
 ************************************************************
 //full model, adding region level independent variables
 meqrlogit hosp_adm_ind smd_on_call `pat_vars' `hosp_vars' `regvars' || ///
-	region1: || pos1: 
+	region1: || pos1:
 estimates save meqrlogit_est_smd_on_call, replace
+predict resid8, residual
+sum resid8, detail
 
-
+/*
 *****************************************************************
 //run meqrlogit as for loop for the remaining 4 exposure variables
 //hospices within regions, covariance structure=independent (default)
@@ -83,6 +122,6 @@ foreach expos in /*smd_on_call*/ pan_efd symp_efd  poc_gocall3 fp_all3{
 		region1: || pos1: //, cov(ex)
 	estimates save meqrlogit_est_`expos', replace
 }
-
+*/
 *****************************************************************
 log close
