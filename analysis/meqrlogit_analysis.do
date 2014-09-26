@@ -67,8 +67,6 @@ summtitle("Log likelihood")
 //add random intercept at hospice level
 meqrlogit hosp_adm_ind || pos1:
 
-meqrlogit, eform
-
 outreg, keep(eq1:_cons) stats(b se) nostars  summstat(ll) ///
 ctitles("","Model 2: Hospice Random Int")
 
