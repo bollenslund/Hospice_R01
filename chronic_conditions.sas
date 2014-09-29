@@ -21,23 +21,11 @@ libname merged 'J:\Geriatrics\Geri\Hospice Project\Hospice\Claims\merged_07_10';
 
 /*get list of hospice start dates for each beneficiary id*/
 
-/*start with sample as defined by insurance coverage and age in master beneficiary data processing*/
+/*start with sample as defined by insurance coverage and age in master beneficiary data processing
+version with hospice start date merged in*/
 data sample;
-	set ccw.mb_final(keep=bene_id) ;
+	set ccw.for_medpar(keep=bene_id start) ;
 run;
-
-/*get hospice start dates from hospice stay dataset*/
-data hs_start_dt_1;
-	set ccw.hs_stays_cleaned (keep=bene_id start);
-run;
-
-proc sql;
-create table hs_start_dt as select
-a.bene_id,b.start from
-sample a left join
-hs_start_dt_1 b
-on a.bene_id=b.bene_id;
-quit;
 
 /***********************************************************************/
 /***********************************************************************/
@@ -57,7 +45,7 @@ xx = claim type
 proc sql;
 create table &source._meet_&days_bef_hs. as select a.*,b.start as hospice_enr_dt
 from merged.&source._claims_j a inner join
-hs_start_dt b
+sample b
 on trim(left(a.BENE_ID))=trim(left(b.bene_id))
 and &days_start<=b.start-a.CLM_FROM_DT<=&days_bef_hs;
 quit;
@@ -75,7 +63,7 @@ where ### = 365 - days before hospice enrollment*/
 proc sql;
 create table &source._meet_&days_bef_hs. as select a.*,b.start as hospice_enr_dt
 from merged.medpar_all_file a inner join
-hs_start_dt b
+sample b
 on trim(left(a.BENE_ID))=trim(left(b.bene_id)) 
 and &days_start<=b.start-a.ADMSN_DT<=&days_bef_hs ;
 quit;
@@ -239,7 +227,7 @@ run ;
 
 proc sql;
 create table dx_list_test2 as select a.*,b.diag
-from hs_start_dt a left join
+from sample a left join
 dx_list_test1 b
 on a.bene_id=b.bene_id;
 quit;
@@ -250,7 +238,9 @@ dx_ind=0;
 if diag ~='' then dx_ind=1;
 run;
 /*view frequency table of beneficiary IDs with at least one dx code 12 months pre hospice
-approximately 5% of beneficiaries do not have any dx codes*/
+approximately 0.3% of beneficiaries do not have any dx codes
+n=149379 have at least 1 dx
+n=435 have none in the year prior to hospice enrollment*/
 proc freq;
 table dx_ind;
 run;
@@ -304,14 +294,18 @@ drop icd9_c new
 
 save "J:\Geriatrics\Geri\Hospice Project\Hospice\working\dx_0_12m_2.dta",replace
 
+//save to csv since sas can't read in stata 13 files
+outsheet using "J:\Geriatrics\Geri\Hospice Project\Hospice\working\dx_0_12m_2.csv", comma replace
+
 /*******************************************************************/
 /* End of STATA code, back to SAS   */ 
 /*******************************************************************/
 
 *bring in formatted Stata dataset of dx codes;
-proc import 
-datafile="J:\Geriatrics\Geri\Hospice Project\Hospice\working\dx_0_12m_2.dta" 
-out=dx_0_12m_2 replace;
+proc import
+datafile="J:\Geriatrics\Geri\Hospice Project\Hospice\working\dx_0_12m_2.csv"
+out=dx_0_12m_2 DBMS=csv replace;
+getnames=yes ;
 run;
 
 
@@ -513,11 +507,13 @@ run;
 %cc(prehs=12m);
 
 /*so resulting datastet from macro is bid_dx_0_12m1*/
-/*merge this chronic conditions information in to full list of bids from hospice claims*/
+/*merge this chronic conditions information in to full list of bids that meet sample criteria
+set in the master beneficiary data processing (since have ffs medicare, make assumption that
+if no dx, then set chronic conditions to 0*/
 
 proc sql;
 create table chronic_conditions_12m_1 as select *
-from hs_start_dt a left join
+from sample a left join
 bid_dx_0_12m1 b
 on a.bene_id=b.bene_id;
 quit;
@@ -526,6 +522,33 @@ data ccw.chronic_conditions_12m;
 set chronic_conditions_12m_1;
 cc_ind = 0;
 if CC_1_AMI ~= . then cc_ind = 1;
+
+ array list CC_1_AMI
+CC_2_ALZH
+CC_3_ALZHDMTA
+CC_4_ATRIALFB
+CC_5_CATARACT
+CC_6_CHRNKIDN
+CC_7_COPD
+CC_8_CHF
+CC_9_DIABETES
+CC_10_GLAUCOMA
+CC_11_HIPFRAC
+CC_12_ISCHMCHT
+CC_13_DEPRESSN
+CC_14_OSTEOPRS
+CC_15_RA_OA
+CC_16_STRKETIA
+CC_17_CNCRBRST
+CC_18_CNCRCLRC
+CC_19_CNCRPRST
+CC_20_CNCRLUNG
+CC_21_CNCREndM
+;
+do over list ;
+if list=. then list=0;
+end;
+
 label cc_ind = "Dx for chronic conditions indicator";
 label CC_1_AMI = "Chronic condition - AMI";
 label CC_2_ALZH = "Chronic condition - Alzheimer's Disease";
@@ -589,9 +612,13 @@ run;
 ods rtf close;
 
 
-/* the above file contains a list of beneficiary IDs with their chronic conditions variables 
-If chronic conditions variables are missing then there were no dx codes present in claims
-in the 12 months prior to hospice enrollment*/
+/* the above file contains a list of beneficiary IDs with their chronic conditions variables*/
+
+/***************************************************************************/
+/*Eric, please check this, the chronic conditiosn dataset reference is right
+but I'm not sure about where you want to merge this in so I didn't remerge anything! */
+/***************************************************************************/
+
 
 
 /*merge with the overall project dataset including the hospice survey*/
