@@ -114,8 +114,6 @@ meqrlogit hosp_adm_ind `pat_vars' smd_on_call `hosp_vars' || region1: || pos1:
 meqrlogit hosp_adm_ind  `pat_vars' smd_on_call `hosp_vars' `regvars' || ///
 	region1: || pos1:
 estimates save meqrlogit_est_smd_on_call, replace
-predict resid8, residual
-sum resid8, detail
 
 /*
 *****************************************************************
