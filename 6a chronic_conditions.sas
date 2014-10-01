@@ -472,6 +472,11 @@ CC_AMI_isch=CC_1_AMI|CC_12_ISCHMCHT;
 CC_alzheim=CC_2_ALZH|CC_3_ALZHDMTA;
 CC_cncr_chronic=CC_17_CNCRBRST | CC_18_CNCRCLRC | CC_19_CNCRPRST | CC_20_CNCRLUNG | 
 	CC_21_CNCREndM ;
+CC_count=CC_1_AMI + CC_2_ALZH + CC_3_ALZHDMTA + CC_4_ATRIALFB + CC_5_CATARACT +
+CC_6_CHRNKIDN + CC_7_COPD + CC_8_CHF + CC_9_DIABETES + CC_10_GLAUCOMA +
+CC_11_HIPFRAC + CC_12_ISCHMCHT + CC_13_DEPRESSN + CC_14_OSTEOPRS + CC_15_RA_OA +
+CC_16_STRKETIA + CC_17_CNCRBRST + CC_18_CNCRCLRC + CC_19_CNCRPRST + 
+CC_20_CNCRLUNG + CC_21_CNCREndM ;
 run;
 
 
@@ -499,7 +504,8 @@ CC_20_CNCRLUNG
 CC_21_CNCREndM
 CC_AMI_isch
 CC_alzheim
-CC_cncr_chronic;
+CC_cncr_chronic
+CC_count;
 run;
 
 %mend;
@@ -547,6 +553,7 @@ CC_21_CNCREndM
 CC_AMI_isch
 CC_alzheim
 CC_cncr_chronic
+CC_count
 ;
 do over list ;
 if list=. then list=0;
@@ -577,6 +584,7 @@ label CC_21_CNCREndM = "Chronic condition - Endometrial Cancer";
 label CC_AMI_isch = "Chronic condition - AMI or Ischemic Heart Dis.";
 label CC_alzheim = "Chronic condition - Alzh or Dementia";
 label CC_cncr_chronic = "Chronic condition - Cancer (all types)";
+label CC_count = "Count of Chronic Conditions present"
 run;
 
 
@@ -606,7 +614,8 @@ CC_20_CNCRLUNG
 CC_21_CNCREndM
 CC_AMI_isch
 CC_alzheim
-CC_cncr_chronic;
+CC_cncr_chronic
+CC_count;
 run;
 proc freq;
 table cc_ind /missprint;
