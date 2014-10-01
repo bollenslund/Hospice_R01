@@ -61,13 +61,6 @@ foreach v in `pat_vars' smd_on_call `hosp_vars' `regvars' {
 glm hosp_adm_ind, family(binomial) link(logit)
 eststo //saved as est1
 
-/*glm, eform
-
-outreg, store(base1) stats(b ci) nostars  summstat(ll) ///
-ctitles("","Model 1: Null") ///
-rtitles("Level 1 Patient Intercept") ///
-summtitle("Log likelihood")
-*/
 //add random intercept at hospice level
 meqrlogit hosp_adm_ind || pos1:
 eststo //saved as est2
@@ -79,25 +72,10 @@ esttab est1 est2 using "`logpath'/meqrlogit_table.rtf", ///
 	varwidth(13) label ///
 	mtitles("Null" "Hospice Random Int" "Region Random Int") replace ///
 	cells(b(fmt(a3)) se(fmt(a4)) ci(fmt(a3)))
-	
-/*outreg, keep(eq1:_cons) stats(b se) nostars  summstat(ll) ///
-ctitles("","Model 2: Hospice Random Int") ///
-rtitles("Level 1 Patient Intercept") ///
-summtitle("Log likelihood")
-
-outreg, store(base2) stats(b se) nostars  summstat(ll) ///
-ctitles("","Hospice Random Int") rtitles("Level 1 Patient intercept")  ///
-rtitles("Level 1 Patient Intercept") ///
-summtitle("Log likelihood")
-*/
 
 //add random intercept at region level
 meqrlogit hosp_adm_ind || region1:
 eststo //saved as est3
-
-/*outreg, store(base3) stats(b se) nostars  summstat(ll) ///
-ctitles("","Hospice Random Int") rtitles("Level 1 Patient intercept" \"" \ ///
-"Level 3 Region Random intercept"\ ""\ ""\ "Log likelihood")*/
 
 //now add random intercept at the hospice and region levels
 meqrlogit hosp_adm_ind || region1: || pos1:
@@ -110,15 +88,7 @@ esttab est3 est4 using "`logpath'/meqrlogit_table.rtf", ///
 	varwidth(13) label ///
 	mtitles("Region Random Int" "Hospice&Region Random Int") append ///
 	cells(b(fmt(a3)) se(fmt(a4)) ci(fmt(a3)))
-/*
-outreg, store(base4) stats(b se) nostars  summstat(ll) ///
-ctitles("","Hospice Random Int") rtitles("Level 1 Patient intercept" \"" \ ///
-"Level 3 Region Random intercept"\ ""\ ""\ "Log likelihood")
 
-outreg, replay(base1) merge(base2) store(table1)
-outreg, replay(table1) merge(base3) store(table2)
-outreg, replay(table2) merge(base4) store(table3)
-*/
 //add individual level (level 1) independent variables
 meqrlogit hosp_adm_ind `pat_vars' || region1: || pos1:
 eststo //saved as est5
@@ -134,7 +104,7 @@ esttab est5 est6 using "`logpath'/meqrlogit_table.rtf", ///
 	nostar transform(ln*: exp(2*@) 2*exp(2*@)) scalars("ll Log likelihood")  ///
 	eqlabels("Patient Intercept" "Region Intercept" "Hospice Intercept", none) ///
 	varwidth(13) label ///
-	mtitles("Region Random Int" "Hospice&Region Random Int") append ///
+	mtitles("Patient Covariates" "Patient&Hospice Cov.") append ///
 	cells(b(fmt(a3)) se(fmt(a4)) ci(fmt(a3)))
 
 ************************************************************
@@ -144,6 +114,13 @@ meqrlogit hosp_adm_ind  `pat_vars' smd_on_call `hosp_vars' `regvars' || ///
 estimates save meqrlogit_est_smd_on_call, replace
 eststo //saved as est7
 
+//Part 4, adding region covariates
+esttab est7 using "`logpath'/meqrlogit_table.rtf", ///
+	nostar transform(ln*: exp(2*@) 2*exp(2*@)) scalars("ll Log likelihood")  ///
+	eqlabels("Patient Intercept" "Region Intercept" "Hospice Intercept", none) ///
+	varwidth(13) label ///
+	mtitles("Add Region Cov.") append ///
+	cells(b(fmt(a3)) se(fmt(a4)) ci(fmt(a3)))
 
 /*
 *****************************************************************
