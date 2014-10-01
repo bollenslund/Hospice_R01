@@ -1,8 +1,13 @@
-/*Create Charlson score based on diagnoses from 12 months 
+/*Create Charlson score based on diagnoses from 12 months
 before beneficiaries first hospice enrollment
 
 Starts with list of diagnoses across all claims ccw.dx_0_12m
-created in the chronic_conditions.sas code
+created in the "6a chronic_conditions.sas" code
+
+Charlson variables are merged with dataset containing claims info,
+clean dod, and chronic conditions "ccw.overall_ds_add_cc"
+
+Final dataset is "ccw.Final_hs_mb_ip_snf_op_dhc_dod_CC"
 */
 
 libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
@@ -133,98 +138,98 @@ we don't use dx type since we usualy don't have dx type data,
 
          /* Myocardial Infarction */
           if   substr(trim(left(DX(i))),1,3) IN: ('410','412') then CC_GRP_1 = 1;
-          LABEL CC_GRP_1 = 'Myocardial Infarction';
+          LABEL CC_GRP_1 = 'Charlson - Myocardial Infarction';
 
          /* Congestive Heart Failure */
           if  DX(i) IN: ('39891','40201','40211','40291','40401','40403','40411','40413','40491','40493',
                          '4254','4255','4257','4258','4259','428') or substr(trim(left(DX(i))),1,3) IN: ('428')  or substr(trim(left(DX(i))),1,4) IN: ('4254','4255','4256','4257','4258','4259') then CC_GRP_2 = 1;
-          LABEL CC_GRP_2 = 'Congestive Heart Failure';
+          LABEL CC_GRP_2 = 'Charlson - Congestive Heart Failure';
 
          /* Periphral Vascular Disease */
           if  DX(i) IN: ('0930','4373','440','441','4431','4432','4438','4439','4471','5571','5579','V434') or substr(trim(left(DX(i))),1,3) IN: ('440','441')
 or 4431<=substr(trim(left(DX(i))),1,4)+0<=4439
                           then CC_GRP_3 = 1;
-          LABEL CC_GRP_3 = 'Periphral Vascular Disease';
+          LABEL CC_GRP_3 = 'Charlson - Periphral Vascular Disease';
 
          /* Cerebrovascular Disease */
           if DX(i) IN: ('36234','430','431','432','433','434','435','436','437','438') or 430<=substr(trim(left(DX(i))),1,3)+0<=438
  then CC_GRP_4 = 1;
-          LABEL CC_GRP_4 = 'Cerebrovascular Disease';
+          LABEL CC_GRP_4 = 'Charlson - Cerebrovascular Disease';
 
          /* Dementia */
           if DX(i) IN: ('290','2941','3312') or substr(trim(left(DX(i))),1,3) IN: ('290') then CC_GRP_5 = 1;
-          LABEL CC_GRP_5 = 'Dementia';
+          LABEL CC_GRP_5 = 'Charlson - Dementia';
 
          /* Chronic Pulmonary Disease */
           if  DX(i) IN: ('4168','4169','490','491','492','493','494','495','496','500','501','502','503',
                           '504','505','5064','5081','5088') or 490<=substr(trim(left(DX(i))),1,3)+0<=505 then CC_GRP_6 = 1;
-          LABEL CC_GRP_6 = 'Chronic Pulmonary Disease';
+          LABEL CC_GRP_6 = 'Charlson - Chronic Pulmonary Disease';
 
          /* Connective Tissue Disease-Rheumatic Disease */
           if  DX(i) IN: ('4465','7100','7101','7102','7103','7104','7140','7141','7142','7148','725') or substr(trim(left(DX(i))),1,3) IN: ('725') or 7140<=substr(trim(left(DX(i))),1,4)+0<=7142
                          then CC_GRP_7 = 1;
-          LABEL CC_GRP_7 = 'Connective Tissue Disease-Rheumatic Disease';
+          LABEL CC_GRP_7 = 'Charlson - Connective Tissue Disease-Rheumatic Disease';
 
          /* Peptic Ulcer Disease */
           if   DX(i) IN: ('531','532','533','534')  or 531<=substr(trim(left(DX(i))),1,3)+0<=534 then CC_GRP_8 = 1;
-          LABEL CC_GRP_8 = 'Peptic Ulcer Disease';
+          LABEL CC_GRP_8 = 'Charlson - Peptic Ulcer Disease';
 
          /* Mild Liver Disease */
           if  DX(i) IN: ('07022','07023','07032','07033','07044','07054','0706','0709','570','571','5733',
                         '5734','5738','5739','V427') or substr(trim(left(DX(i))),1,3) IN: ('571','570') then CC_GRP_9 = 1;
-          LABEL CC_GRP_9 = 'Mild Liver Disease';
+          LABEL CC_GRP_9 = 'Charlson - Mild Liver Disease';
 
          /* Diabetes without complications */
           if  DX(i) IN: ('2500','2501','2502','2503','2508','2509') or 2500<=substr(trim(left(DX(i))),1,4)+0<=2503 then CC_GRP_10 = 1;
-          LABEL CC_GRP_10 = 'Diabetes without complications';
+          LABEL CC_GRP_10 = 'Charlson - Diabetes without complications';
 
          /* Diabetes with complications */
           if   DX(i) IN: ('2504','2505','2506','2507')  or 2504<=substr(trim(left(DX(i))),1,4)+0<=2507  then CC_GRP_11 = 1;
-          LABEL CC_GRP_11 = 'Diabetes with complications';
+          LABEL CC_GRP_11 = 'Charlson - Diabetes with complications';
 
          /* Paraplegia and Hemiplegia */
           if  DX(i) IN: ('3341','342','343','3440','3441','3442','3443','3444','3445','3446','3449') or substr(trim(left(DX(i))),1,3) IN: ('343','342')   or 3440<=substr(trim(left(DX(i))),1,4)+0<=3446
                           then CC_GRP_12 = 1;
-          LABEL CC_GRP_12 = 'Paraplegia and Hemiplegia';
+          LABEL CC_GRP_12 = 'Charlson - Paraplegia and Hemiplegia';
 
          /* Renal Disease */
           if  DX(i) IN: ('40301','40311','40391','40402','40403','40412','40413','40492','40493','582',
                          '5830','5831','5832','5834','5836','5837','585','586','5880','V420','V451','V56')
  or substr(trim(left(DX(i))),1,3) IN: ('582','585','586','V56')   or 5830<=substr(trim(left(DX(i))),1,4)+0<=5837
                          then CC_GRP_13 = 1;
-          LABEL CC_GRP_13 = 'Renal Disease';
+          LABEL CC_GRP_13 = 'Charlson - Renal Disease';
 
          /* Cancer */
           if  DX(i) IN: ('140','141','142','143','144','145','146','147','148','149','150','151','152','153',
                          '154','155','156','157','158','159','160','161','162','163','164','165','170','171',
                          '172','174','175','176','179','180','181','182','183','184','185','186','187','188',
                          '189','190','191','192','193','194','195','200','201','202','203','204','205','206',
-                         '207','208','2386') 
+                         '207','208','2386')
     or 174<=substr(trim(left(DX(i))),1,3)+0<=195   or 1950<=substr(trim(left(DX(i))),1,4)+0<=1958   or 140<=substr(trim(left(DX(i))),1,3)+0<=172
    or 200<=substr(trim(left(DX(i))),1,3)+0<=208
 then CC_GRP_14 = 1;
-          LABEL CC_GRP_14 = 'Cancer';
+          LABEL CC_GRP_14 = 'Charlson - Cancer';
 
          /* Moderate or Severe Liver Disease */
           if   DX(i) IN: ('4560','4561','4562','5722','5723','5724','5728')
-  or 4560<=substr(trim(left(DX(i))),1,4)+0<=4562     or 5722<=substr(trim(left(DX(i))),1,4)+0<=5728 
+  or 4560<=substr(trim(left(DX(i))),1,4)+0<=4562     or 5722<=substr(trim(left(DX(i))),1,4)+0<=5728
                          then CC_GRP_15 = 1;
-          LABEL CC_GRP_15 = 'Moderate or Severe Liver Disease';
+          LABEL CC_GRP_15 = 'Charlson - Moderate or Severe Liver Disease';
 
          /* Metastatic Carcinoma */
           if   DX(i) IN: ('196','197','198','199')  or 196<=substr(trim(left(DX(i))),1,3)+0<=199  then CC_GRP_16 = 1;
-          LABEL CC_GRP_16 = 'Metastatic Carcinoma';
+          LABEL CC_GRP_16 = 'Charlson - Metastatic Carcinoma';
 
          /* AIDS/HIV */
           if   DX(i) IN: ('042','043','044')  or substr(trim(left(DX(i))),1,3) IN: ('042','043','044') then CC_GRP_17 = 1;
-          LABEL CC_GRP_17 = 'AIDS/HIV';
+          LABEL CC_GRP_17 = 'Charlson - AIDS/HIV';
 
     end;
 
-    TOT_GRP = CC_GRP_1  + CC_GRP_2  + CC_GRP_3  + CC_GRP_4  + CC_GRP_5  + CC_GRP_6  + CC_GRP_7  + CC_GRP_8  +
+    charlson_TOT_GRP = CC_GRP_1  + CC_GRP_2  + CC_GRP_3  + CC_GRP_4  + CC_GRP_5  + CC_GRP_6  + CC_GRP_7  + CC_GRP_8  +
               CC_GRP_9  + CC_GRP_10 + CC_GRP_11 + CC_GRP_12 + CC_GRP_13 + CC_GRP_14 + CC_GRP_15 + CC_GRP_16 +
               CC_GRP_17;
-    LABEL TOT_GRP = 'Total CCI groups per record';
+    LABEL charlson_TOT_GRP = 'Charlson - Total Charlson conditions per record';
 
         run;
 
@@ -271,9 +276,8 @@ then CC_GRP_14 = 1;
 /***  Create charlson index, drop unneeded vars  ***/
 /***************************************************/
 data charlson_2;
-set charlson_1;
+set charlson_1(rename=(i=Dx_count));
 drop dx1-dx270 _NAME_;
-rename i=Dx_count;
 /*create index with weighting*/
 charlson_index = CC_GRP_1 + CC_GRP_2 + CC_GRP_3 + CC_GRP_4 + CC_GRP_5 + CC_GRP_6  +
                CC_GRP_7 + CC_GRP_8 + CC_GRP_9 + CC_GRP_10 + 2*CC_GRP_11 + 2*CC_GRP_12 + 
@@ -283,24 +287,69 @@ label charlson_index="Charlson index using severity weighting";
 run;
 
 proc freq;
-table CC_GRP: ;
+table CC_GRP: charlson_TOT_GRP charlson_index;
 run;
 
+/*Merge charlson variables in with the full list of beneficiaries
+if no dx (n=435) set charlson variables to 0 since verified as having ffs mc
+prior to hospice enrollment in mbs file processing*/
+data full_sample;
+set ccw.overall_ds_add_cc(keep=bene_id);
+run;
+
+proc sql;
+create table charlson_3(drop=bene_id2) as select * from
+full_sample a left join
+charlson_2(rename=(bene_id=bene_id2)) b
+on a.bene_id=b.bene_id2;
+quit;
 
 /*Save dataset*/
 data ccw.charlson;
-set charlson_2;
+set charlson_3;
+
+array list
+CC_GRP_1
+CC_GRP_2
+CC_GRP_3
+CC_GRP_4
+CC_GRP_5
+CC_GRP_6
+CC_GRP_7
+CC_GRP_8
+CC_GRP_9
+CC_GRP_10
+CC_GRP_11
+CC_GRP_12
+CC_GRP_13
+CC_GRP_14
+CC_GRP_15
+CC_GRP_16
+CC_GRP_17
+charlson_TOT_GRP
+charlson_index
+Dx_count
+;
+do over list ;
+if list=. then list=0;
+end;
+
 run;
-ods rtf body = '\\home\users$\leee20\Documents\Downloads\Melissa\charlson.rtf';
+
+ods rtf body = 'J:\Geriatrics\Geri\Hospice Project\output\charlson.rtf';
 proc contents data=ccw.charlson varnum;
 run;
+
+proc freq; table CC_GRP: charlson_TOT_GRP charlson_index Dx_count; run;
 ods rtf close;
 
-
+/*merge charlson indicators into main dataset*/
 proc sql;
-create table ccw.Final_hs_mb_ip_snf_op_dhc_dod_CC
+create table ccw.Final_hs_mb_ip_snf_op_dhc_dod_CC(drop=bene_id2)
 as select *
-from ccw.Final_hs_mb_ip_snf_op_dhc_dod a
-left join ccw.charlson b
-on a.bene_id = b.bene_id;
+from ccw.overall_ds_add_cc a
+left join ccw.charlson(rename=(bene_id=bene_id2)) b
+on a.bene_id = b.bene_id2;
 quit;
+
+proc freq; table CC_GRP: charlson_TOT_GRP charlson_index Dx_count; run;

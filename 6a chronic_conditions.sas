@@ -9,7 +9,7 @@ Hospice start dates from working/hs_stays_cleaned dataset
 List of beneficiaries to define sample from working/mb_final
 (created from MB12mosforward.sas program file)
 
-Final file saved as: ccw.mb_final_cc
+Final file saved as: ccw.overall_ds_add_cc
 
 Note: There is STATA code in this file to convert dx codes from claims into
 dot format to conform with the list of dx codes associated with each of the
@@ -544,6 +544,9 @@ CC_18_CNCRCLRC
 CC_19_CNCRPRST
 CC_20_CNCRLUNG
 CC_21_CNCREndM
+CC_AMI_isch
+CC_alzheim
+CC_cncr_chronic
 ;
 do over list ;
 if list=. then list=0;
@@ -614,27 +617,18 @@ ods rtf close;
 
 /* the above file contains a list of beneficiary IDs with their chronic conditions variables*/
 
-/***************************************************************************/
-/*Eric, please check this, the chronic conditiosn dataset reference is right
-but I'm not sure about where you want to merge this in so I didn't remerge anything! */
-/***************************************************************************/
-
-
-
-/*merge with the overall project dataset including the hospice survey*/
+/*merge with the overall project dataset, as created in "6 deathandotherinfo.sas" code*/
 proc sql;
-create table ccw.overall_ds_add_cc as select * from
-ccw.Final_hosp_county a left join
-ccw.chronic_conditions_12m b
-on a.bene_id=b.bene_id;
+create table ccw.overall_ds_add_cc(drop=bene_id2 start2) as select * from
+ccw.final_hs_mb_ip_snf_op_dhc_dod a left join
+ccw.chronic_conditions_12m (rename=(bene_id=bene_id2) rename=(start=start2)) b
+on a.bene_id=b.bene_id2 and a.start=b.start2;
 quit;
 
 ods rtf file="J:\Geriatrics\Geri\Hospice Project\output\proc_contents_overall_ds.rtf";
 proc contents data=ccw.overall_ds_add_cc;
 run;
-ods rtf close;
 
-proc export data=ccw.overall_ds_add_cc
-outfile="J:\Geriatrics\Geri\Hospice Project\Hospice\working\Final_hosp_county.dta" replace;
-run;
+proc freq; table CC_: ; run;
+ods rtf close;
 
