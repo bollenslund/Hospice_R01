@@ -428,15 +428,6 @@ sum(CC_21_CNCREndM) as CC_21_CNCREndM
 from list_&prehs._dx group by bene_id;
 quit;
 
-/*merge chronic conditions into index surgery list of bid's by bid
- proc sql;
- create table bid_dx_0_&presurg.2(drop=bid) as select a.bid_hrs,b.*
- from sur_fin.surgery_ids_6m_pre_adm a
- left join
-  bid_dx_0_&presurg. b 
- on trim(left(a.bid_hrs))=trim(left(b.bid));
- quit;
-*/
 /*convert to chronic condition vars. to binary variables*/
  data bid_dx_0_&prehs.1;
  set bid_dx_0_&prehs.;
@@ -477,6 +468,7 @@ CC_6_CHRNKIDN + CC_7_COPD + CC_8_CHF + CC_9_DIABETES + CC_10_GLAUCOMA +
 CC_11_HIPFRAC + CC_12_ISCHMCHT + CC_13_DEPRESSN + CC_14_OSTEOPRS + CC_15_RA_OA +
 CC_16_STRKETIA + CC_17_CNCRBRST + CC_18_CNCRCLRC + CC_19_CNCRPRST + 
 CC_20_CNCRLUNG + CC_21_CNCREndM ;
+
 run;
 
 
@@ -518,10 +510,10 @@ set in the master beneficiary data processing (since have ffs medicare, make ass
 if no dx, then set chronic conditions to 0*/
 
 proc sql;
-create table chronic_conditions_12m_1 as select *
+create table chronic_conditions_12m_1(drop=bene_id2) as select *
 from sample a left join
-bid_dx_0_12m1 b
-on a.bene_id=b.bene_id;
+bid_dx_0_12m1(rename=(bene_id=bene_id2)) b
+on a.bene_id=b.bene_id2;
 quit;
 
 data ccw.chronic_conditions_12m;
@@ -584,39 +576,16 @@ label CC_21_CNCREndM = "Chronic condition - Endometrial Cancer";
 label CC_AMI_isch = "Chronic condition - AMI or Ischemic Heart Dis.";
 label CC_alzheim = "Chronic condition - Alzh or Dementia";
 label CC_cncr_chronic = "Chronic condition - Cancer (all types)";
-label CC_count = "Count of Chronic Conditions present"
+label CC_count = "Count of Chronic Conditions";
 run;
 
 
 ods rtf file="J:\Geriatrics\Geri\Hospice Project\output\hs_cc_means.rtf";
 
 proc means;
-var CC_1_AMI
-CC_2_ALZH
-CC_3_ALZHDMTA
-CC_4_ATRIALFB
-CC_5_CATARACT
-CC_6_CHRNKIDN
-CC_7_COPD
-CC_8_CHF
-CC_9_DIABETES
-CC_10_GLAUCOMA
-CC_11_HIPFRAC
-CC_12_ISCHMCHT
-CC_13_DEPRESSN
-CC_14_OSTEOPRS
-CC_15_RA_OA
-CC_16_STRKETIA
-CC_17_CNCRBRST
-CC_18_CNCRCLRC
-CC_19_CNCRPRST
-CC_20_CNCRLUNG
-CC_21_CNCREndM
-CC_AMI_isch
-CC_alzheim
-CC_cncr_chronic
-CC_count;
+var CC_:;
 run;
+
 proc freq;
 table cc_ind /missprint;
 run;
