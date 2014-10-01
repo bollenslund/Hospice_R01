@@ -74,6 +74,7 @@ run;
 proc freq data=base2;
 table count_hs_stays;
 run;
+
 /*
 proc sort data=base2 out=base_test nodupkey;
 by bene_id clm_from_dt;

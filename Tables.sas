@@ -707,14 +707,19 @@ covariates:
 proc sort data=table5;
 by descending pan_efd;
 run;
+data table5;
+set ccw.ltd_vars_for_analysis;
+hospital_beds_per_res = beds_2009/census_pop_2010;
+run;
 ods html close;
 ods html;
 proc glimmix data=table5 initglm;
-class pos1 monitor_pan ownership1 sizecat region1 agecat;
-model ip_ed_visit_ind = monitor_pan agecat re_white cancer cc_grp ownership1 sizecat region1
+class pos1 pan_efd ownership1 sizecat region1 agecat urban_cd hospital_beds_per_res per_cap_inc_2009;
+model ip_ed_visit_ind = pan_efd agecat re_white cancer cc_grp ownership1 sizecat urban_cd hospital_beds_per_res per_cap_inc_2009
 /dist = bin link=logit solution;
 nloptions maxiter = 50 tech=nrridg;
 random intercept / subject = pos1;
+random intercept / subject = region1;
 run;
 proc glimmix data=table5 initglm;
 class pos1 monitor_pan ownership1 sizecat region1 agecat;

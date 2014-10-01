@@ -76,6 +76,7 @@ proc contents data=ccw.providers varnum;
 run;
 ods rtf close;
 
+
 proc sql;
 create table ccw.Final_hs_mb_mp_op_dhc_dod_cc_p
 as select a.*, b.provider_id, b.pos_change

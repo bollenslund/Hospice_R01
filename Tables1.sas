@@ -547,7 +547,6 @@ if Scrisis_mgt = 1 and Smd_on_call = 1 and Span_EFD = 1 and SSYMP_EFD = 1 and SC
 /*calculation checks out*/
 ed_visit_ind = 0;
 if op_ed_count > 0 or ip_ed_visit_ind = 1 then ed_visit_ind = 1;
-
 run;
 proc freq data=table5;
 table ip_ed_visit_ind op_ed_count ed_visit_ind;
@@ -555,7 +554,6 @@ run;
 proc freq data=table5;
 table pan_efd symptom_cat symptom_cat1 symptom_cat2 ownership1 region1 cancer monitor_pan;
 run;
-
 
 %let varlist = 
 symp_efd smd_on_call symp_efd poc_gocall3 fp_all3 all_17 all_10;
@@ -807,27 +805,6 @@ ods html close;
 ods html;
 %freq1;
 
-
-if mech=. then Smech=0; else Smech=mech;
-if berev_12_mo=. then Sberev_12_mo=0; else Sberev_12_mo=berev_12_mo; 
-if screen_routine=. then Sscreen_routine=0; else Sscreen_routine=screen_routine;
-if screen_bd=. then Sscreen_bd=0; else Sscreen_bd=screen_bd;
-if FP_ALL3=. then SFP_ALL3=0; else SFP_ALL3=FP_ALL3;
-if q32predeathplan=. then Sq32predeathplan=0; else Sq32predeathplan=q32predeathplan;
-if fam_satA=. then Sfam_satA=0; else Sfam_satA=fam_satA;
-if ber_satA=. then Sber_satA=0; else Sber_satA=ber_satA;
-
-if crisis_mgt=. then Scrisis_mgt=0; else Scrisis_mgt=crisis_mgt; 
-if md_on_call=. then Smd_on_call=0; else Smd_on_call=md_on_call;
-if pan_EFD=. then Span_EFD=0; else Span_EFD=pan_EFD; 
-if SYMP_EFD=. then SSYMP_EFD=0; else SSYMP_EFD=SYMP_EFD; 
-if CORE4=. then SCORE4=0; else SCORE4=CORE4; 
-if POC_ADMIT=. then SPOC_ADMIT=0; else SPOC_ADMIT=POC_ADMIT; 
-if POC_GOCALL3=. then SPOC_GOCALL3=0; else SPOC_GOCALL3=POC_GOCALL3; 
-if standard2=. then Sstandard2=0; else Sstandard2=standard2; 
-if IT_SAF_A=. then SIT_SAF_A=0; else SIT_SAF_A=IT_SAF_A; 
-if IT_patsat_A=. then SIT_patsat_A=0; else SIT_patsat_A=IT_patsat_A; 
-
 proc freq data=table5;
 table Sberev_12_mo Sberev_12_mo Sscreen_routine screen_routine Sscreen_bd screen_bd SFP_ALL3 FP_ALL3 Sq32predeathplan q32predeathplan Sfam_satA fam_satA Sber_satA ber_satA;
 run;
@@ -888,3 +865,49 @@ run;
 proc freq data=table5;
 table female agecat re_white cancer cc_grp ownership1 sizecat region1;
 run;
+
+data table5;
+set ccw.for_analysis;
+run;
+proc freq data=table5;
+table ed_visit_ind;
+run;
+data table5;
+set table5;
+ed_visit_ind = 0;
+if op_ed_count > 0 or ip_ed_visit_ind = 1 then ed_visit_ind = 1;
+all_17 = 0;
+if Smech = 1 and Sberev_12_mo = 1  and Sscreen_bd = 1 and SFP_ALL3 = 1 and Sq32predeathplan = 1 and Sfam_satA = 1 and Sber_satA = 1 and Scrisis_mgt = 1
+and Smd_on_call = 1 and Span_EFD = 1 and SSYMP_EFD = 1 and SCORE4 = 1 and SPOC_ADMIT = 1 and SPOC_GOCALL3 = 1 and SIT_SAF_A = 1 and SIT_patsat_A = 1 and Sstandard2 = 1 then all_17 = 1;
+all_10 = 0;
+if Scrisis_mgt = 1 and Smd_on_call = 1 and Span_EFD = 1 and SSYMP_EFD = 1 and SCORE4 = 1 and SPOC_ADMIT = 1 and SPOC_GOCALL3 = 1 and SIT_SAF_A = 1 and SIT_patsat_A = 1 and Sstandard2 = 1 then all_10 = 1;
+ed_visit_cnt = op_ed_count + ip_ed_visit_cnt;
+run;
+proc means data=table5;
+where ed_visit_cnt > 0;
+var ed_visit_cnt ip_ed_visit_cnt op_ed_count;
+run;
+proc freq data=table5;
+table all_17;
+run;
+data ccw.for_analysis;
+set table5;
+run;
+
+proc freq data=table5;
+table agecat;
+run;
+
+proc freq data=table5;
+table female agecat re_white cancer cc_grp ownership1 sizecat region1;
+run;
+proc contents data=table5 varnum;
+run;
+proc contents data=table5;
+run;
+
+data test;
+set ccw.charlson;
+if CC_GRP_1 = .;
+run;
+
