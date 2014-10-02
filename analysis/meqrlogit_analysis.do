@@ -39,6 +39,11 @@ cd "`datapath'"
 use ltd_vars_for_analysis1_clean.dta, replace
 *****************************************************************
 
+la var age_70_74 "Age 70-74"
+la var age_75_79 "Age 75-79"
+la var age_80_84 "Age 80-84"
+la var age_gt84 "Age 85+"
+
 //define variables
 local xvars3 female age_70_74 age_75_79 age_80_84 age_gt84 ///
  re_white cancer cc_grp_ind2 cc_grp_ind3 ownership_ind2 ///
@@ -66,13 +71,13 @@ meqrlogit hosp_adm_ind || pos1:
 eststo //saved as est2
 
 //Part 1 of estimates table saved, base + hospice random intercept
-esttab est1 est2 using "`logpath'/meqrlogit_table.rtf", ///
+/*esttab est1 est2 using "`logpath'/meqrlogit_table.rtf", ///
 	nostar transform(ln*: exp(2*@) 2*exp(2*@)) scalars("ll Log likelihood")  ///
 	eqlabels("Patient Intercept" "Hospice Intercept" "Region Intercept", none) ///
 	varwidth(13) label ///
 	mtitles("Null" "Hospice Random Int" "Region Random Int") replace ///
 	cells(b(fmt(a3)) se(fmt(a4)) ci(fmt(a3)))
-
+*/
 //add random intercept at region level
 meqrlogit hosp_adm_ind || region1:
 eststo //saved as est3
@@ -82,31 +87,37 @@ meqrlogit hosp_adm_ind || region1: || pos1:
 eststo //saved as est4
 
 //Part 2 of estimates, region, region+hospice random intercepts
-esttab est3 est4 using "`logpath'/meqrlogit_table.rtf", ///
-	nostar transform(ln*: exp(2*@) 2*exp(2*@)) scalars("ll Log likelihood")  ///
-	eqlabels("Patient Intercept" "Region Intercept" "Hospice Intercept", none) ///
-	varwidth(13) label ///
-	mtitles("Region Random Int" "Hospice&Region Random Int") append ///
+//this works!
+/*esttab est1 est2 est3 est4 using "`logpath'/meqrlogit_table.rtf", ///
+	nostar transform(/*ln*:*/ 1: exp(2*@) 2*exp(2*@)) scalars("ll Log likelihood")  ///
+	equations(1:1:1:1 , .:2:.:3 , .:.:2:2) ///
+        eqlabels("Patient Intercept" "Hospice Intercept" "Region Intercept" , none) ///
+	varwidth(13) label replace ///
+	mtitles("Null""Hospice Random Int""Region Random Int" "Hospice&Region Random Int")  ///
 	cells(b(fmt(a3)) se(fmt(a4)) ci(fmt(a3)))
-
+  */    
 //add individual level (level 1) independent variables
-meqrlogit hosp_adm_ind `pat_vars' || region1: || pos1:
-eststo //saved as est5
 
+local pat_vars female age_70_74 age_75_79 age_80_84 age_gt84 ///
+ re_white cancer cc_grp_ind2 cc_grp_ind3 
+ 
+ meqrlogit hosp_adm_ind `pat_vars' || region1: || pos1:
+eststo //saved as est5  
 
 //add hospice level (level 2) independent variables - includes exposure variable
 //add individual level (level 1) independent variables
 meqrlogit hosp_adm_ind `pat_vars' smd_on_call `hosp_vars' || region1: || pos1:
 eststo //saved as est6
 
+
 //Part 3 of estimates, region, region+hospice random intercepts
-esttab est5 est6 using "`logpath'/meqrlogit_table.rtf", ///
+/*esttab est5 est6 using "`logpath'/meqrlogit_table.rtf", ///
 	nostar transform(ln*: exp(2*@) 2*exp(2*@)) scalars("ll Log likelihood")  ///
 	eqlabels("Patient Intercept" "Region Intercept" "Hospice Intercept", none) ///
 	varwidth(13) label ///
 	mtitles("Patient Covariates" "Patient&Hospice Cov.") append ///
 	cells(b(fmt(a3)) se(fmt(a4)) ci(fmt(a3)))
-
+*/
 ************************************************************
 //full model, adding region level independent variables
 meqrlogit hosp_adm_ind  `pat_vars' smd_on_call `hosp_vars' `regvars' || ///
@@ -114,14 +125,24 @@ meqrlogit hosp_adm_ind  `pat_vars' smd_on_call `hosp_vars' `regvars' || ///
 estimates save meqrlogit_est_smd_on_call, replace
 eststo //saved as est7
 
+esttab est1 est2 est3 est4 est5 est6 est7 using "`logpath'/meqrlogit_table.rtf", ///
+	nostar transform(/*ln*:*/ 1: exp(2*@) 2*exp(2*@)) scalars("ll Log likelihood")  ///
+	equations(1:1:1:1:1:1:1 , .:2:.:3:3:3:3 , .:.:2:2:2:2:2) ///
+        eqlabels("Patient Intercept" "Hospice Intercept" "Region Intercept" , none) ///
+	varwidth(13) label replace ///
+	mtitles("Null" "Hospice Random Int""Region Random Int" "Hospice&Region Random Int" ///
+	"Patient Covariates" "Hospice Covariates" "Full Model")  ///
+	cells(b(fmt(a3)) se(fmt(a4)) ci(fmt(a3)))
+  
+
 //Part 4, adding region covariates
-esttab est7 using "`logpath'/meqrlogit_table.rtf", ///
+/*esttab est7 using "`logpath'/meqrlogit_table.rtf", ///
 	nostar transform(ln*: exp(2*@) 2*exp(2*@)) scalars("ll Log likelihood")  ///
 	eqlabels("Patient Intercept" "Region Intercept" "Hospice Intercept", none) ///
 	varwidth(13) label ///
 	mtitles("Add Region Cov.") append ///
 	cells(b(fmt(a3)) se(fmt(a4)) ci(fmt(a3)))
-
+*/
 /*
 *****************************************************************
 //run meqrlogit as for loop for the remaining 4 exposure variables
