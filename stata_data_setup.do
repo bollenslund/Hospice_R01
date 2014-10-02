@@ -99,6 +99,13 @@ la var region1 "Hospice region"
 la def region1 1 "New England/ Mid-Atlantic" 2 "E/W North Central" ///
 	3 "South Atlantic" 4 "E/W South Central" 5 "Mountain/Pacific"
 la val region1 region1
+
+la var smd_on_call "MD on call nights and weekends"
+la var pan_efd "Pain monitored at least every few days" 
+la var symp_efd "Symptoms monitored at least every few days"
+la var poc_gocall3 "Patients goals of care discussed"
+la var fp_all3 "Family preferences of care discussed"
+
 ************************************************************
 //create indicator variables for categorical variables
 tab agecat2, gen(age_ind) //base for models <70
