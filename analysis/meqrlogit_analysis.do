@@ -315,7 +315,7 @@ meqrlogit hosp_adm_ind  `pat_vars' smd_on_call `hosp_vars' `regvars' || ///
 estimates save meqrlogit_est_smd_on_call, replace
 
 //get all coef except the patient intercept (constant)
-outreg, nocons stats(b se ci) sdec(3) varlabels store(est6_1) ///
+outreg, nocons stats(b se ci) sdec(3) varlabels store(est7_1) ///
 		nostars noautosumm
  
 mat est7=J(3,4,.)
