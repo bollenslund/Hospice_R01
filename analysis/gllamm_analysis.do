@@ -22,7 +22,7 @@ set more off
 local datapath J:\Geriatrics\Geri\Hospice Project\Hospice\working
 local logpath J:\Geriatrics\Geri\Hospice Project\output
 
-log using "`logpath'\meglm_stata_work-LOG-2.txt", text replace
+log using "`logpath'\gllamm_stata_estimation-LOG.txt", text replace
 
 cd "`datapath'"
 
@@ -42,20 +42,24 @@ local regvars urban_cd hospital_beds_per_res per_cap_inc_2009
 
 **********************************************************************
 //variable check before run gllamm model, drop observations where missing
-local vars hosp_adm_ind pos1 region1 smd_on_call pan_efd symp_efd  ///
-	poc_gocall3 fp_all3 `xvars3' `regvars'
+local vars hosp_adm_ind pos1 region1 `xvars3' `regvars'
 	
 foreach v in `vars'{
 sum `v', detail
 drop if `v'==.
 }
 
+preserve
+
 //run gllamm as for loop for the 5 exposure variables
-foreach expos in smd_on_call pan_efd symp_efd  poc_gocall3 fp_all3{
+foreach expos in smd_on_call /*pan_efd symp_efd  poc_gocall3 fp_all3*/{
+	drop if `expos'==.
+
 	gllamm hosp_adm_ind `expos' `xvars3' `regvars', ///
 		i(pos1 region1) fam(binom) link(logit) adapt
 	estimates save gllamm_est_`expos', replace
-}
+	restore
+	}
 	
 *********************************************************
 log close
