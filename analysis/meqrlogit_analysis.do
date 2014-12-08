@@ -15,14 +15,12 @@ Patient level outcomes (all binary):
 This code builds up the model from just intercept to adding in random effects,
 then adding in covariates for the impact of MD on call on hospital admission
 
-Then runs the full model looking at impact of each of the 5 beest practices
+Then runs the full model looking at impact of each of the 5 best practices
 on hospital admission (nothing is run with ED or ICU use at this time)
 
 Dataset exported from SAS at the end of the table1.sas code
 and then cleaned in the stata_data_setup.do file
 
-Note: You need to install the Stata package -estout- to get the tables
-to export into an .rtf file
 */
 
 capture log close
