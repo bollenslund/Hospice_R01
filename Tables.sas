@@ -62,9 +62,9 @@ if prin_diag_cat = 7 then prin_diag_cat1 = 4;
 if prin_diag_cat = 8 then prin_diag_cat1 = 5;
 if prin_diag_cat = 16 then prin_diag_cat1 = 6;
 /*CC*/
-if TOT_GRP = 0 then CC_grp = 0;
-if TOT_GRP = 1 then CC_grp = 1;
-if TOT_GRP > 1 then CC_grp = 2;
+if charlson_TOT_GRP = 0 then CC_grp = 0;
+if charlson_TOT_GRP = 1 then CC_grp = 1;
+if charlson_TOT_GRP > 1 then CC_grp = 2;
 run;
 
 proc format;
@@ -77,6 +77,13 @@ value prindiagfmt
         6='SYMPTOMS, SIGNS, AND ILL-DEFINED CONDITIONS'
         7='Other'
 ;
+run;
+
+proc freq data=ccw.for_analysis;
+table cc_grp;
+run;
+proc freq data=table1;
+table cc_grp;
 run;
 
 /*table 1 material: gender, age, race, */

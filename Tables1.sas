@@ -62,13 +62,17 @@ if prin_diag_cat = 7 then prin_diag_cat1 = 4;
 if prin_diag_cat = 8 then prin_diag_cat1 = 5;
 if prin_diag_cat = 16 then prin_diag_cat1 = 6;
 /*CC*/
-if TOT_GRP = 0 then CC_grp = 0;
-if TOT_GRP = 1 then CC_grp = 1;
-if TOT_GRP > 1 then CC_grp = 2;
+if CC_count = 0 then CC_grp = 0;
+if CC_count = 1 then CC_grp = 1;
+if CC_count > 1 then CC_grp = 2;
+/*CHarlson*/
+if charlson_TOT_GRP = 0 then CC_GRP1 = 0;
+if charlson_TOT_GRP = 1 then CC_GRP1 = 1;
+if charlson_TOT_GRP > 1 then CC_GRP1 = 2;
 run;
 
-proc freq data=tables;
-table tot_grp;
+proc freq data=table1;
+table CC_GRP CC_GRP1;
 run;
 
 proc format;
@@ -822,10 +826,16 @@ run;
 
 *saves a version with only a few variables to export to Stata;
 data ccw.ltd_vars_for_analysis;
-set table5(keep= ip_ed_visit_ind ed_visit_ind hosp_adm_ind icu_stay_ind
+set ccw.for_analysis(keep= ip_ed_visit_ind ed_visit_ind hosp_adm_ind icu_stay_ind
 female agecat re_white cancer cc_grp ownership1
 pos1 sizecat region1 smd_on_call pan_efd symp_efd poc_gocall3 fp_all3
-county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd);
+county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd CC_2_ALZH CC_3_ALZHDMTA total_los disenr hosp_death);
+run;
+proc means data=ccw.ltd_vars_for_analysis;
+var total_los;
+run;
+proc freq data=ccw.ltd_vars_for_analysis;
+table CC_2_ALZH;
 run;
 
 proc export data=ccw.ltd_vars_for_analysis
@@ -835,14 +845,14 @@ proc export data=ccw.ltd_vars_for_analysis
 
 
 proc genmod data=table5 descending;
-class pos1 hosp_adm_ind (ref = '0') smd_on_call (ref = '0')
+class pos1 hosp_adm_ind (ref = '0') pan_efd (ref = '0')
 ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
 cancer (ref = '0') CC_grp(ref = '0') sizecat(ref = '1') 
 region1 (ref = '3') / param = ref;
-model hosp_adm_ind = smd_on_call female agecat re_white cancer cc_grp ownership1 sizecat region1
+model hosp_adm_ind = pan_efd female agecat re_white cancer cc_grp ownership1 sizecat region1
 /dist=bin link=logit type3 wald ;
 repeated subject=pos1/type=exch;
-estimate "log O.R. MD on Call" smd_on_call 1 -1 / exp;
+estimate "log O.R. Pain EFD" pan_efd 1 -1 / exp;
 estimate "log O.R. Female" female 1 -1 / exp;
 estimate "log O.R. Age 70-74 vs. <69" agecat 1 0 0 0 0 /exp;
 estimate "log O.R. Age 75-79 vs. <69" agecat 0 1 0 0 0 /exp;
@@ -861,7 +871,9 @@ estimate "log O.R. region (E/W North Central vs. South Atlantic)" region1 0 1 0 
 estimate "log O.R. region (E/W South Central vs. South Atlantic)" region1 0 0 1 0/exp;
 estimate "log O.R. region (Mountain/Pacific vs. South Atlantic)" region1 0 0 0 1/exp;
 run;
-
+proc freq data=table5;
+table cc_grp;
+run;
 proc freq data=table5;
 table female agecat re_white cancer cc_grp ownership1 sizecat region1;
 run;
@@ -911,3 +923,65 @@ set ccw.charlson;
 if CC_GRP_1 = .;
 run;
 
+
+
+data table6;
+set table5;
+death_hospice = 0;
+if (discharge1=40|discharge1=41|discharge1=42) then death_hospice = 1;
+if (discharge2=40|discharge2=41|discharge2=42) then death_hospice = 1;
+if (discharge3=40|discharge3=41|discharge3=42) then death_hospice = 1;
+if (discharge4=40|discharge4=41|discharge4=42) then death_hospice = 1;
+if (discharge5=40|discharge5=41|discharge5=42) then death_hospice = 1;
+if (discharge6=40|discharge6=41|discharge6=42) then death_hospice = 1;
+if (discharge7=40|discharge7=41|discharge7=42) then death_hospice = 1;
+if (discharge8=40|discharge8=41|discharge8=42) then death_hospice = 1;
+if (discharge9=40|discharge9=41|discharge9=42) then death_hospice = 1;
+if (discharge10=40|discharge10=41|discharge10=42) then death_hospice = 1;
+if (discharge11=40|discharge11=41|discharge11=42) then death_hospice = 1;
+if (discharge12=40|discharge12=41|discharge12=42) then death_hospice = 1;
+if (discharge13=40|discharge13=41|discharge13=42) then death_hospice = 1;
+if (discharge14=40|discharge14=41|discharge14=42) then death_hospice = 1;
+if (discharge15=40|discharge15=41|discharge15=42) then death_hospice = 1;
+if (discharge16=40|discharge16=41|discharge16=42) then death_hospice = 1;
+if (discharge17=40|discharge17=41|discharge17=42) then death_hospice = 1;
+if (discharge18=40|discharge18=41|discharge18=42) then death_hospice = 1;
+if (discharge19=40|discharge19=41|discharge19=42) then death_hospice = 1;
+if (discharge20=40|discharge20=41|discharge20=42) then death_hospice = 1;
+if (discharge21=40|discharge21=41|discharge21=42) then death_hospice = 1;
+hospital_death = 0;
+if death_hospice = 1 or hosp_death = 1 then hospital_death = 1;
+ed_count_total = op_ed_count + ip_ed_visit_cnt;
+if disenr = 1 then do;
+disenr_to_death = dod_clean - end1 + 1;
+end;
+run;
+data ccw.for_analysis1;
+set table6;
+run;
+data ccw.ltd_vars_for_analysis1;
+set table6(keep= bene_id ip_ed_visit_ind ed_visit_ind hosp_adm_ind icu_stay_ind cc_count
+female agecat re_white cancer cc_grp ownership1 prin_diag_cat1
+pos1 sizecat region1 smd_on_call pan_efd symp_efd poc_gocall3 fp_all3
+county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd CC_2_ALZH CC_3_ALZHDMTA total_los disenr hosp_death disenr_to_death ed_count_total hospital_death death_hospice hosp_death hosp_adm_days icu_stay_days age_at_enr);
+run;
+/*
+%macro hospice;
+%do i = 1 %to 21;
+data table5;
+set table5;
+death_hospice = 0;
+
+run;
+%end;
+%mend;
+options mprint mlogic;
+%hospice;
+proc freq data=table6;
+table hospital_death;
+run;
+*/
+
+proc freq data=ccw.ltd_vars_for_analysis1;
+table cc_grp;
+run;
