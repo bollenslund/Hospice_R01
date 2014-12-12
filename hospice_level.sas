@@ -1,3 +1,5 @@
+libname ccw "J:\Geriatrics\Geri\Hospice Project\Hospice\working";
+
 data pt_level;
 set ccw.Ltd_vars_for_analysis1;
 drop county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd;
@@ -5,7 +7,7 @@ if hosp_adm_ind = 0 then hosp_adm_days = .;
 if icu_stay_ind = 0 then icu_stay_days = .;
 if ed_visit_ind = 0 then ed_count_total = .;
 ccgrp1 = 0;
-if cc_grp = 2 then ccgrp1 = 1;
+if cc_grp = 2 then ccgrp1 = 1; /*2+ chronic conditions*/
 mental_dis = 0;
 if prin_diag_cat1 = 2 then mental_dis = 1;
 nervous_dis = 0;
@@ -20,7 +22,7 @@ other_dis = 0;
 if prin_diag_cat1 = 7 then other_dis = 1;
 run;
 proc freq data=pt_level;
-table cc_count;
+table cc_count*ccgrp1;
 run;
 
 proc means data=pt_level;
