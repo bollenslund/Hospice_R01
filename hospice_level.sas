@@ -24,9 +24,23 @@ run;
 proc freq data=pt_level;
 table cc_count*ccgrp1;
 run;
-
-proc means data=pt_level;
-var disenr_to_death;
+proc sort data=pt_level;
+by POS1;
+run;
+proc means data=pt_level median;
+var disenr_to_death total_los;
+output out = stats;
+output out = medians median =;
+by pos1;
+run;
+data stats;
+set stats medians(in=in2);
+by _type_;
+if in2 then _STAT_ = 'MEDIAN';
+run;
+proc means data=pt_level median;
+where pos1 = 11548;
+var disenr_to_death total_los;
 run;
 
 proc sql;
@@ -47,12 +61,100 @@ run;
 ods rtf close;
 proc sql;
 create table hsp_level1
-as select *
-from hsp_level a
-left join ccw.Hsurvey_r01_1 b
-on a.Hospital_ID = b.pos1;
+as select b.*, a.*
+from ccw.Hsurvey_r01_1 a
+left join hsp_level b
+on a.pos1 = b.Hospital_ID;
+quit;
+data hsp_level1;
+set hsp_level1;
+hospital_id = pos1;
+run;
+proc sql;
+create table hsp_level2
+as select a.*, b.disenr_to_death as Median_Num_Days_Disenr_to_Death, b.total_los as Median_LOS
+from hsp_level1 a
+left join medians b
+on a.hospital_id = b.POS1;
+quit;
+data ccw.hospice_level_numbers;
+set hsp_level2;
+run;
+
+/*testing to see where some of the hospices went*
+proc sql;
+select sum(Num_pts_in_Sample)
+from hsp_level;
+quit;
+data hospice;
+set ccw.hsurvey_r01_1;
+indic = 1;
+run;
+data all_claims;
+set merged.hospice_base_claims_j (keep = CLM_ID PRVDR_NUM);
+provider = prvdr_num + 0;
+run;
+proc sql;
+create table all_claims1
+as select a.*, b.indic
+from all_claims a
+left join hospice b
+on a.provider = b.pos1;
+quit;
+data all_claims1;
+set all_claims1;
+if indic ~=.;
+run;
+proc sort data=all_claims1;
+by provider;
+run;
+proc sql;
+create table all_claims2
+as select provider as Hospital_ID, count(*) as number
+from all_claims1
+group by provider;
 quit;
 
-data ccw.hospice_level_numbers;
-set hsp_level1;
+proc sort data=all_claims2 out=all_claims3;
+by number;
 run;
+proc sort data=hsp_level out=hsp_level_sort;
+by Num_pts_in_Sample;
+run;
+
+proc sql;
+create table all_claims4
+as select a.*, b.Num_pts_in_Sample
+from all_claims3 a
+left join hsp_level_sort b
+on a.Hospital_ID = b.hospital_id;
+quit;
+proc sort data=all_claims4;
+by number;
+run;
+*/
+/*three hospitals are in the claims database, but are not in the final sample*/
+
+/*now getting a list of the hospitals without claims data*/
+/*
+data hsp_level_no_data;
+set hsp_level1;
+if Num_pts_in_Sample = .;
+j = 1;
+run;
+proc sql;
+create table hsp_level_no_data1
+as select a.*, b.j
+from ccw.Hsurvey_r01_1 a 
+left join hsp_level_no_data b
+on a.pos1 = b.hospital_id;quit;
+data hsp_level_no_data1;
+set hsp_level_no_data1;
+if j = 1;
+run;
+
+data ccw.hospices_with_no_claims;
+set hsp_level_no_data1;
+run;
+*/
+

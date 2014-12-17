@@ -955,6 +955,7 @@ ed_count_total = op_ed_count + ip_ed_visit_cnt;
 if disenr = 1 then do;
 disenr_to_death = dod_clean - end1 + 1;
 end;
+if disenr_to_death < 0 then disenr_to_death = .; /*figure out what to do with the ones that are negative*/
 run;
 data ccw.for_analysis1;
 set table6;
@@ -981,6 +982,11 @@ proc freq data=table6;
 table hospital_death;
 run;
 */
+
+data debug;
+set table6;
+if disenr_to_death < 0 and disenr_to_death ~= .;
+run;
 
 proc freq data=ccw.ltd_vars_for_analysis1;
 table cc_grp;
