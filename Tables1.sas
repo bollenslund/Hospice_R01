@@ -983,11 +983,6 @@ table hospital_death;
 run;
 */
 
-data debug;
-set table6;
-if disenr_to_death < 0 and disenr_to_death ~= .;
-run;
-
 proc freq data=ccw.ltd_vars_for_analysis1;
 table cc_grp;
 run;
