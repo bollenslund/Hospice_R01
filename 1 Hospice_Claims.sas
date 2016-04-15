@@ -103,12 +103,14 @@ data hospice_revenue3;
                                         tot_655 = 0;
                                         tot_656 = 0;
                                         tot_657 = 0;
+										tot_659 = 0;
                                         if rev_code = 650 then tot_650 = REV_CNTR_UNIT_CNT;
                                         if rev_code = 651 then tot_651 = REV_CNTR_UNIT_CNT;
                                         if rev_code = 652 then tot_652 = REV_CNTR_UNIT_CNT;
                                         if rev_code = 655 then tot_655 = REV_CNTR_UNIT_CNT;
                                         if rev_code = 656 then tot_656 = REV_CNTR_UNIT_CNT;
                                         if rev_code = 657 then tot_657 = REV_CNTR_UNIT_CNT;
+										if rev_code = 659 then tot_659 = REV_CNTR_UNIT_CNT;
                                         end;
                                 else do;
                                         if rev_code = 650 then tot_650 = tot_650 + REV_CNTR_UNIT_CNT;
@@ -117,6 +119,7 @@ data hospice_revenue3;
                                         if rev_code = 655 then tot_655 = tot_655 + REV_CNTR_UNIT_CNT;
                                         if rev_code = 656 then tot_656 = tot_656 + REV_CNTR_UNIT_CNT;
                                         if rev_code = 657 then tot_657 = tot_657 + REV_CNTR_UNIT_CNT;
+										if rev_code = 659 then tot_659 = tot_659 + REV_CNTR_UNIT_CNT;
                                         end;
                 /*converts hours to days for rev code 652*/
                 tot_652_days = floor(tot_652/24);
@@ -150,6 +153,7 @@ data hospice_revenue5;
                                         total_655 = tot_655;
                                         total_656 = tot_656;
                                         total_657 = tot_657;
+										total_659 = tot_659;
                                         end;
                                 else do;
                                         total_650 = total_650 + tot_650;
@@ -158,6 +162,7 @@ data hospice_revenue5;
                                         total_655 = total_655 + tot_655;
                                         total_656 = total_656 + tot_656;
                                         total_657 = total_657 + tot_657;
+										total_659 = total_659 + tot_659;
                                         end;
 run;
 
@@ -170,7 +175,7 @@ run;
 
 /*creates dataset with just the beneficiary ID and revenue code day totals*/
 data total_rev_center;
-        set hospice_revenue6 (keep = bene_id total_650 total_651 total_652 total_655 total_656 total_657);
+        set hospice_revenue6 (keep = bene_id total_650 total_651 total_652 total_655 total_656 total_657 total_659);
 run;
 
 
@@ -684,6 +689,7 @@ data macro5;
         label total_655 = "Total Days in Inpatient Hospice Care";
         label total_656 = "Total Days in General Inpatient Care under Hospice services (non-Respite)";
         label total_657 = "Total Number of Procedures in Hospice Physician Services";
+		label total_659 = "Total Days in Hospice Services (Other)";
 run;
 /*create variable for total hospice length of stay*/
 data total_los;
@@ -766,7 +772,7 @@ ods rtf close;
 /*Check - drops all but the one observation with 21 stays*/
 data test;
         set macro5;
-                if totalcost21=. then delete;
+         if totalcost21=. then delete;
 run;
 
 /*Check to confirm one row per beneficiary id - no observations dropped*/

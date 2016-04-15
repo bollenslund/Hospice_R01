@@ -279,202 +279,55 @@ data medihmo2;
 	yeardiff = deathyr - startyear;
 run;
 
-/*check to make sure dropped cases where date of death before hospice enrollment date*/
-data test20;
-set medihmo2;
-enr_to_dth=dod - start;
-run;
-
-proc freq data=test20;
-table enr_to_dth /missprint;
-run;
-/*no beneficiaries with date of death before hospice enrollment*/
-
-data test;
+data medihmo3 (keep = bene_id BENE_ENROLLMT_REF_YR startyear startmonth yeardiff deathyr deathmonth allhmostatus allmedistatus allmedistatus1-allmedistatus3 allhmostatus1-allhmostatus3);
 	set medihmo2;
-	by bene_id;
-	if last.bene_id then output;
-run;
-/*total of 213504 unique beneficiaries*/
-
-proc freq data=medihmo2;
-	table lengthmedi lengthmo;
-run;
-/*all length of strings are 12.*/
-
-proc freq data=test;
-	table yeardiff;
-run;
-/*table of difference between death year and hospice enrollment year, all 0-2*/
-
-/*for those that died the same year as they enrolled in hospice, trim buyin and hmo
-indicator string variables to just month of hospice enrollment to death month
-This is full mc and hmo status indicator variable for these beneficiaries*/
-data medihmo3_0;
-	set medihmo2;
-	if yeardiff = 0;
-	if BENE_ENROLLMT_REF_YR = startyear;
+	by bene_id BENE_ENROLLMT_REF_YR;
+	retain allhmostatus allmedistatus allmedistatus1 allhmostatus1 allmedistatus2 allhmostatus2;
+	length allhmostatus $ 36 allmedistatus $ 36 allmedistatus1 $ 12 allhmostatus1 $ 12 allmedistatus2 $ 12 allhmostatus2 $ 12 allmedistatus3 $ 12 allhmostatus3 $ 12;
+	if first.bene_id then do;
+	allmedistatus1 = ""; allhmostatus1 = ""; allmedistatus2 = ""; allhmostatus2 = ""; allmedistatus3 = ""; allhmostatus3 = "";
+	end;
+	/*IF WE NEED TO LOOK THROUGH 1 YEAR OF CLAIMS, trim buyin and hmo
+	indicator string variables to just month of hospice enrollment to death month
+	This is full mc and hmo status indicator variable for these beneficiaries*/
+	if yeardiff = 0 and BENE_ENROLLMT_REF_YR = startyear then do;
 	mosdif = (deathmonth - startmonth)+1;
-	allmedistatus = substr(trim(left(medi_status)), startmonth, mosdif);
-	allhmostatus = substr(trim(left(hmo_status)), startmonth, mosdif);
-run;
-
-/*for beneficiaries that enrolled in hospice and died the next year
-4 observations don't have mbs entries during the 2nd year so we don't have
-insurance information on them, need to drop them*/
-data medihmo3_1_1a;
-	set medihmo2;
-	if yeardiff = 1;
-	if BENE_ENROLLMT_REF_YR = startyear;
+	allmedistatus1 = substr(trim(left(medi_status)), startmonth, mosdif);
+	allhmostatus1 = substr(trim(left(hmo_status)), startmonth, mosdif);
+	end;
+	/*IF WE NEED TO LOOK THROUGH 2 YEARS OF CLAIMS,
+	4 observations don't have mbs entries during the 2nd year so we don't have
+	insurance information on them, need to drop them (done in statement after taking last observation)*/
+	if yeardiff = 1 and BENE_ENROLLMT_REF_YR = startyear then do ;
 	mosdif = (12 - startmonth)+1;
 	/*mc ind variables for month of hospice enrollment to end of that year*/
 	allmedistatus1 = substr(trim(left(medi_status)), startmonth, mosdif);
 	allhmostatus1 = substr(trim(left(hmo_status)), startmonth, mosdif);
-run;
-data medihmo3_1_2;
-	set medihmo2;
-	if yeardiff = 1;
-	if BENE_ENROLLMT_REF_YR = deathyr;
-	/*mc ind variables for year after hs enrollment to death*/
+	end;
+	else if yeardiff = 1 and BENE_ENROLLMT_REF_YR = deathyr then do;
 	allmedistatus2 = substr(trim(left(medi_status)), 1, deathmonth);
 	allhmostatus2 = substr(trim(left(hmo_status)), 1, deathmonth);
-run;
-
-/*only keep beneficiaries that have both years mbs entry*/
-proc sql;
-     create table medihmo3_1_1 as select * from
-     medihmo3_1_1a where bene_id in (select bene_id from medihmo3_1_2);
-quit;
-proc sort data=medihmo3_1_1; by bene_id; run;
-proc sort data=medihmo3_1_2; by bene_id; run;
-/*bring in death year mc ind variables*/
-proc sql;
-	create table medihmo3_1
-	as select a.*, b.allmedistatus2, b.allhmostatus2
-	from medihmo3_1_1 a
-	left join medihmo3_1_2 b
-	on a.bene_id = b.bene_id;
-quit;
-/*combine mc ind variables across the 2 years so single variable covers time from hs to death*/
-data medihmo3_1a;
-	set medihmo3_1;
-	allmedistatus = trim(left(allmedistatus1)) || trim(left(allmedistatus2));
-	allhmostatus = trim(left(allhmostatus1)) || trim(left(allhmostatus2));
-	drop allmedistatus1 allmedistatus2 allhmostatus1 allhmostatus2;
-run;
-/*
-data test;
-	set medihmo3_1a;
-	retain totmonth;
-	totmonth = intck("month",start,dod);
-	totmonth = totmonth + 1;
-	totmlength = length (allmedistatus);
-	diff = totmonth - totmlength;
-run;
-proc freq data=test;
-	table diff;
-run;
-*/
-/*all months are accounted for*/
-
-/*similar to above steps, process mc ind variables for beneficiaries who die
-2 calendar years after hospice enrollment
-there are 5473 beneficiaries but 5 are missing 2nd and/or 3rd year mbs file*/
-data medihmo3_2_0a;
-	set medihmo2;
-	if yeardiff = 2;
-	if BENE_ENROLLMT_REF_YR = startyear;
+	end;
+	/*IF WE NEED TO LOOK THROUGH 3 YEARS OF CLAIMS*/
+	if yeardiff = 2 and BENE_ENROLLMT_REF_YR = startyear then do;
 	mosdif = (12 - startmonth)+1;
 	allmedistatus1 = substr(trim(left(medi_status)), startmonth, mosdif);
 	allhmostatus1 = substr(trim(left(hmo_status)), startmonth, mosdif);
-run;
-/*only 5470 - 3 missing 2nd year mbs file*/
-data medihmo3_2_1a;
-	set medihmo2;
-	if yeardiff=2;
-	if BENE_ENROLLMT_REF_YR = startyear +1;
+	end;
+	if yeardiff = 2 and BENE_ENROLLMT_REF_YR = startyear +1 then do;
 	allmedistatus2 = medi_status;
 	allhmostatus2 = hmo_status;
-run;
-/*only 5468 - 5 missing 2nd year mbs file*/
-data medihmo3_2_2;
-	set medihmo2;
-	if yeardiff = 2;
-	if BENE_ENROLLMT_REF_YR = deathyr;
+	end;
+	if yeardiff = 2 and BENE_ENROLLMT_REF_YR = deathyr then do;
 	allmedistatus3 = substr(trim(left(medi_status)), 1, deathmonth);
 	allhmostatus3 = substr(trim(left(hmo_status)), 1, deathmonth);
-run;
-
-/*only keep 5468 beneficiaries that have mbs entry for all 3 years*/
-proc sql;
-     create table medihmo3_2_0 as select * from
-     medihmo3_2_0a where bene_id in (select bene_id from medihmo3_2_2);
-quit;
-proc sql;
-     create table medihmo3_2_1 as select * from
-     medihmo3_2_1a where bene_id in (select bene_id from medihmo3_2_2);
-quit;
-
-proc freq data=medihmo3_2_2;
-table allmedistatus3 /missprint;
-run;
-
-data test4;
-set medihmo3_2_2;
-if allmedistatus3='';
-run;
-
-proc sort data=medihmo3_2_0; by bene_id; run;
-proc sort data=medihmo3_2_1; by bene_id; run;
-proc sort data=medihmo3_2_2; by bene_id; run;
-proc sql;
-	create table medihmo3_2
-	as select a.*, b.allmedistatus2, b.allhmostatus2
-	from medihmo3_2_0 a
-	left join medihmo3_2_1 b
-	on a.bene_id = b.bene_id;
-quit;
-proc sql;
-	create table medihmo3_2a
-	as select a.*, b.allmedistatus3, b.allhmostatus3
-	from medihmo3_2 a
-	left join medihmo3_2_2 b
-	on a.bene_id = b.bene_id;
-quit;
-data medihmo3_2b;
-	set medihmo3_2a;
+	end;
+	if last.bene_id;
+	if yeardiff = 1 and (allmedistatus2 = "" and allhmostatus2 = "") then delete;
+	if yeardiff = 2 and ((allmedistatus2 = "" and allhmostatus2 = "")|(allmedistatus3 = "" and allhmostatus3 = "")) then delete;
 	allmedistatus = trim(left(allmedistatus1)) || trim(left(allmedistatus2)) || trim(left(allmedistatus3));
-	allhmostatus = trim(left(allhmostatus1)) || trim(left(allhmostatus2))|| trim(left(allhmostatus3));
-	*drop allmedistatus1 allmedistatus2 allhmostatus1 allhmostatus2 allmedistatus3 allhmostatus3;
+	allhmostatus = trim(left(allhmostatus1)) || trim(left(allhmostatus2)) || trim(left(allhmostatus3));
 run;
-
-proc freq data=medihmo3_2b;
-table startmonth deathmonth;
-run;
-
-/*check that months mc indicator variables match count of months from hospice enroll to death*/
-data test;
-	set medihmo3_2b;
-	retain totmonth;
-	totmonth = intck("month",start,dod);
-	totmonth = totmonth + 1;
-	totmlength = length (allmedistatus);
-	diff = totmonth - totmlength;
-run;
-proc freq data=test;
-	table diff;
-run;
-data test1;
-	set test;
-	if diff > 0;
-run;
-
-/*bring all beneficiaries into single dataset with their complete mc ind vars
-213495 have full insurance information (213504 - 4 - 5 = 213495)*/
-data medihmo3;
-	set medihmo3_2b medihmo3_1a medihmo3_0;
-run;
-proc sort data=medihmo3; by bene_id; run;
 
 /*create indicator variables for part a and b coverage and hmo coverage*/
 data medihmo4;
@@ -483,11 +336,11 @@ data medihmo4;
 	if indexc(allmedistatus, "0", "1", "2", "A", "B") then partab = 0;
 	nohmo = 1;
 	if indexc(allhmostatus, "1", "2", "4", "A", "B", "C") then nohmo = 0;
-	age = 1;
-	if BENE_AGE_AT_END_REF_YR <= 65 then age = 0;
-	if dod_ind = 1 then dod = .;
-	both_ab_hmo = 0;
-	if partab = 0 and nohmo = 0 then both_ab_hmo = 1;
+run;
+
+
+proc freq data=medihmo4;
+table partab nohmo;
 run;
 ods rtf body="J:\Geriatrics\Geri\Hospice Project\output\results.rtf";
 

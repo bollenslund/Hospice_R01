@@ -3,6 +3,9 @@ libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 data tables;
 set ccw.final_hosp_county;
 run;
+proc freq data=tables;
+table BENE_DEATH_DATE;
+run;
 
 data table1;
 set tables;
@@ -69,10 +72,31 @@ if CC_count > 1 then CC_grp = 2;
 if charlson_TOT_GRP = 0 then CC_GRP1 = 0;
 if charlson_TOT_GRP = 1 then CC_GRP1 = 1;
 if charlson_TOT_GRP > 1 then CC_GRP1 = 2;
-run;
+/*dementia*/
+prim_dementia = 0;
+if prim_diag = 290 then prim_dementia = 1;
+if prim_diag = . then prim_dementia = .;
+/*secondary Diagnosis (only for getting dementia numbers)*/
+icd_2_str = substr(icd_2,1,3);
+icd_2_diag = icd_2_str+0;
+icd_3_str = substr(icd_3,1,3);
+icd_3_diag = icd_3_str+0;
+icd_4_str = substr(icd_4,1,3);
+icd_4_diag = icd_4_str+0;
+icd_5_str = substr(icd_5,1,3);
+icd_5_diag = icd_5_str+0;
+/*this zero is okay because all instances of prim_diag exists*/
+any_dementia = 0;
+if prim_diag = 290 | icd_2_diag = 290 | icd_3_diag = 290| icd_4_diag = 290 | icd_5_diag = 290 then any_dementia = 1;
 
-proc freq data=table1;
-table CC_GRP CC_GRP1;
+run;
+/*
+proc freq data=ccw.ltd_vars_for_analysis_4_8_16 ;
+table prim_dementia any_dementia;
+run;
+data test (keep = BENE_ID prim_dementia prim_diag primary_icd icd_2_diag icd_2);
+set table1;
+if any_dementia = 1;
 run;
 
 proc format;
@@ -86,8 +110,10 @@ value prindiagfmt
         7='Other'
 ;
 run;
+*/
 
 /*table 1 material: gender, age, race, */
+/*
 proc freq data=table1;
 format prin_diag_cat1 prindiagfmt.;
 table female agecat race sizecat region ownership prin_diag_cat1 cc_grp;
@@ -96,13 +122,15 @@ run;
 proc freq data=table1;
 table Open_access;
 run;
-
+*/
 data table2;
 set table1;
 loglos = log(total_los + 1);
 run;
 
+
 /*table 2 LOS*/
+/*
 proc ttest data=table2;
 class open_access;
 var total_los;
@@ -137,6 +165,7 @@ var total_los;
 run;
 
 /*obtain the mean/median values*/
+/*
 ods rtf body = "J:\Geriatrics\Geri\Hospice Project\meanandmedian.rtf";
 proc means data=table2 n mean median;
 	class open_access;
@@ -173,6 +202,7 @@ run;
 ods rtf close;
 
 /*table 2 wilcoxon p value*/
+/*
 proc npar1way data=table2 wilcoxon;
 	class open_access;
 	var total_los;
@@ -208,6 +238,7 @@ run;
 
 
 /*table 2 disenrolled*/
+/*
 proc freq data=table2;
 table open_access*disenr / chisq;
 run;
@@ -234,6 +265,7 @@ table Tube_feed*disenr / chisq;
 run;
 
 /*Table 2 cancer*/
+/*
 proc freq data=table2;
 table open_access*CC_GRP_14 / chisq;
 run;
@@ -272,17 +304,18 @@ run;
 /*********************** Total Expenditures ***********************/
 
 /*obtaining the mean and median of costs*/
-proc means data=table3 n mean median;
+
+/*proc means data=table3 n mean median;
 class open_access;
 var totalcosts;
 run;
 /*t test of the costs*/
-proc ttest data=table3;
+/*proc ttest data=table3;
 class open_access;
 var logtotalcosts;
 run;
 /* running the nonparametric test of costs*/
-proc npar1way data=table3 wilcoxon;
+/*proc npar1way data=table3 wilcoxon;
 class open_access;
 var totalcosts;
 run;
@@ -290,21 +323,21 @@ run;
 /*********************** ED Visits and LOS ***********************/
 
 /*2x2 table for those who have ED visits greater or equal to 1*/
-proc freq data=table3;
+/*proc freq data=table3;
 table open_access*ip_ed_visit_ind / chisq;
 run;
 /*doing a poisson regression on the number of visits. Crude model*/
-proc genmod data=table3;
+/*proc genmod data=table3;
 class open_access / param = glm;
 model ip_ed_visit_cnt = open_access / type3 dist=poisson;
 run;
 /*non-parametric test for ED visit count*/
-proc npar1way data=table3 wilcoxon;
+/*proc npar1way data=table3 wilcoxon;
 class open_access;
 var ip_ed_visit_cnt;
 run;
 /*number of stays in ED without zeros*/
-proc means data = table3 n mean median min max;
+/*proc means data = table3 n mean median min max;
 class open_access;
 where ip_ed_visit_cnt ~= 0;
 var ip_ed_visit_cnt;
@@ -318,22 +351,22 @@ run;
 /*********************** ICU Visits and LOS ***********************/
 
 /*2x2 table for those have have ICU visits greater or equal to 1*/
-proc freq data=table3;
+/*proc freq data=table3;
 table open_access*icu_stay_ind / chisq;
 run;
 /*doing a poisson regression on the number of ICU stays*/
-proc genmod data=table3;
+/*proc genmod data=table3;
 where icu_stay_cnt ~= 0;
 class open_access / param = glm;
 model icu_stay_cnt = open_access / type3 dist=poisson;
 run;
 /*non-parametric test for # of ICU stays*/
-proc npar1way data=table3 wilcoxon;
+/*proc npar1way data=table3 wilcoxon;
 class open_access;
 var icu_stay_cnt;
 run;
 /*number of stays in ICU without zero*/
-proc means data = table3 n mean median min max;
+/*proc means data = table3 n mean median min max;
 class open_access;
 where icu_stay_cnt ~= 0;
 var icu_stay_cnt;
@@ -347,17 +380,17 @@ run;
 /*********************** HOSPITALIZATIONS ***********************/
 
 /*number of stays in hospital poisson regression*/
-proc genmod data=table3;
+/*proc genmod data=table3;
 class open_access / param = glm;
 model hosp_adm_cnt = open_access / type3 dist=poisson;
 run;
 /*non-parametric for # of hosp stays*/
-proc npar1way data=table3 wilcoxon;
+/*proc npar1way data=table3 wilcoxon;
 class open_access;
 var hosp_adm_cnt;
 run;
 /*number of stays in the Hosp without zeroes*/
-proc means data = table3 n mean median min max;
+/*proc means data = table3 n mean median min max;
 class open_access;
 where hosp_adm_cnt~= 0;
 var hosp_adm_cnt;
@@ -378,18 +411,19 @@ proc freq data=missing;
 table POS1;
 run;
 /*poisson for the number of days a person was in the hospital*/
-proc genmod data=table3;
+/*proc genmod data=table3;
 class open_access / param = glm;
 model hosp_adm_days = open_access / type3 dist=poisson;
 run;
 /*non-parametric for the number of days in the hospital*/
-proc npar1way data=table3 wilcoxon;
+/*proc npar1way data=table3 wilcoxon;
 class open_access;
 var hosp_adm_days;
 run;
 
 
 /******************** Total Patient Column ***********************/
+/*
 proc means data=table3 n mean median min max;
 var totalcosts;
 run;
@@ -431,7 +465,7 @@ run;
 
 
 /******************************************************** TABLE 4 STUFF. VERY LONG**************************************/
-
+/*
 proc format;
 *24 hour crisis mggt phone access
 *Crisis management*;
@@ -470,7 +504,7 @@ value monfmt2f     		1="Daily/Every Few Days"
                         3="All Else";
 run;
 
-
+*/
 data table4;
 set table3;
 monitor_cat1 = 3;
@@ -552,13 +586,16 @@ if Scrisis_mgt = 1 and Smd_on_call = 1 and Span_EFD = 1 and SSYMP_EFD = 1 and SC
 ed_visit_ind = 0;
 if op_ed_count > 0 or ip_ed_visit_ind = 1 then ed_visit_ind = 1;
 run;
+
+/*
 proc freq data=table5;
 table ip_ed_visit_ind op_ed_count ed_visit_ind;
 run;
 proc freq data=table5;
 table pan_efd symptom_cat symptom_cat1 symptom_cat2 ownership1 region1 cancer monitor_pan;
 run;
-
+*/
+/*
 %let varlist = 
 symp_efd smd_on_call symp_efd poc_gocall3 fp_all3 all_17 all_10;
 %macro freq();
@@ -669,6 +706,7 @@ run;
 %let varlist0 = smd_on_call pan_efd symp_efd poc_gocall3 fp_all3 all_17 all_10;
 %let varlist1 = smd_on_call pan_efd symp_efd poc_gocall3 fp_all3 all_17 all_10;
 /*%let varlist2 = ip_ed_visit_ind hosp_adm_ind icu_stay_ind;*/
+/*
 %macro regression();
 %let i = 1;
 %let var=%scan(&varlist1,&i);
@@ -816,6 +854,7 @@ proc freq data=table5;
 table Scrisis_mgt crisis_mgt Smd_on_call md_on_call Span_EFD pan_EFD SSYMP_EFD SYMP_EFD SCORE4 CORE4 SPOC_ADMIT POC_ADMIT SPOC_GOCALL3 POC_GOCALL3 Sstandard2
 standard2 SIT_SAF_A IT_SAF_A SIT_patsat_A IT_patsat_A;
 run;
+
 data table5;
 set table5;
 run;
@@ -823,13 +862,13 @@ proc freq data=table5;
 table ip_ed_visit_ind*all_17 hosp_adm_ind*all_17 icu_stay_ind*all_17
 ip_ed_visit_ind*all_10 hosp_adm_ind*all_10 icu_stay_ind*all_10 / chisq;
 run;
-
+*/
 *saves a version with only a few variables to export to Stata;
 data ccw.ltd_vars_for_analysis;
 set ccw.for_analysis(keep= ip_ed_visit_ind ed_visit_ind hosp_adm_ind icu_stay_ind
 female agecat re_white cancer cc_grp ownership1
 pos1 sizecat region1 smd_on_call pan_efd symp_efd poc_gocall3 fp_all3
-county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd CC_2_ALZH CC_3_ALZHDMTA total_los disenr hosp_death);
+county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd CC_2_ALZH CC_3_ALZHDMTA total_los disenr hosp_death prim_dementia any_dementia);
 run;
 proc means data=ccw.ltd_vars_for_analysis;
 var total_los;
@@ -837,13 +876,12 @@ run;
 proc freq data=ccw.ltd_vars_for_analysis;
 table CC_2_ALZH;
 run;
-
 proc export data=ccw.ltd_vars_for_analysis
 	outfile='J:\Geriatrics\Geri\Hospice Project\Hospice\working\ltd_vars_for_analysis1.dta'
 	replace;
 	run;
 
-
+/*
 proc genmod data=table5 descending;
 class pos1 hosp_adm_ind (ref = '0') pan_efd (ref = '0')
 ownership1 (ref = '2') agecat(ref = '1') re_white (ref = '0') 
@@ -877,13 +915,15 @@ run;
 proc freq data=table5;
 table female agecat re_white cancer cc_grp ownership1 sizecat region1;
 run;
-
+*/
 data table5;
 set ccw.for_analysis;
 run;
+/*
 proc freq data=table5;
 table ed_visit_ind;
 run;
+*/
 data table5;
 set table5;
 ed_visit_ind = 0;
@@ -895,6 +935,7 @@ all_10 = 0;
 if Scrisis_mgt = 1 and Smd_on_call = 1 and Span_EFD = 1 and SSYMP_EFD = 1 and SCORE4 = 1 and SPOC_ADMIT = 1 and SPOC_GOCALL3 = 1 and SIT_SAF_A = 1 and SIT_patsat_A = 1 and Sstandard2 = 1 then all_10 = 1;
 ed_visit_cnt = op_ed_count + ip_ed_visit_cnt;
 run;
+/*
 proc means data=table5;
 where ed_visit_cnt > 0;
 var ed_visit_cnt ip_ed_visit_cnt op_ed_count;
@@ -902,10 +943,11 @@ run;
 proc freq data=table5;
 table all_17;
 run;
+*/
 data ccw.for_analysis;
 set table5;
 run;
-
+/*
 proc freq data=table5;
 table agecat;
 run;
@@ -922,7 +964,7 @@ data test;
 set ccw.charlson;
 if CC_GRP_1 = .;
 run;
-
+*/
 
 
 data table6;
@@ -957,14 +999,22 @@ disenr_to_death = dod_clean - end1 + 1;
 end;
 if disenr_to_death < 0 then disenr_to_death = .; /*figure out what to do with the ones that are negative*/
 run;
+
+
+
 data ccw.for_analysis1;
 set table6;
 run;
-data ccw.ltd_vars_for_analysis1;
-set table6(keep= bene_id ip_ed_visit_ind ed_visit_ind hosp_adm_ind icu_stay_ind cc_count
+
+data ccw.ltd_vars_for_analysis_4_8_16;
+set ccw.for_analysis1(keep= bene_id ip_ed_visit_ind ed_visit_ind hosp_adm_ind icu_stay_ind cc_count
 female agecat re_white cancer cc_grp ownership1 prin_diag_cat1
 pos1 sizecat region1 smd_on_call pan_efd symp_efd poc_gocall3 fp_all3
-county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd CC_2_ALZH CC_3_ALZHDMTA total_los disenr hosp_death disenr_to_death ed_count_total hospital_death death_hospice hosp_death hosp_adm_days icu_stay_days age_at_enr);
+county_state beds_2009 nursing_beds_2009 per_cap_inc_2009 Census_Pop_2010 urban_cd CC_2_ALZH CC_3_ALZHDMTA total_los 
+totalcosts totalcosts_hospice totalcosts_nonhospice op_cost dme_cost hha_cost ip_tot_cost snf_cost carr_cost disenr hosp_death disenr_to_death ed_count_total hospital_death death_hospice hosp_death hosp_adm_days icu_stay_days age_at_enr prim_dementia any_dementia);
+run;
+proc freq data=ccw.ltd_vars_for_analysis_4_8_16;
+table prim_dementia any_dementia;
 run;
 /*
 %macro hospice;
@@ -982,7 +1032,124 @@ proc freq data=table6;
 table hospital_death;
 run;
 */
-
+/*
 proc freq data=ccw.ltd_vars_for_analysis1;
 table cc_grp;
 run;
+
+
+
+/*************************************************************** SECONDARY DIAGNOSIS *********************************************************/
+/*
+data table1b;
+set table1;
+run;
+option symbolgen;
+option mprint;
+%macro icd2_5;
+%do i = 2 %to 5;
+data table1b;
+set table1b;
+/*other diag*/
+/*
+diag_cat&i. = 0;
+if icd_&i. = "" then diag_cat&i. = .;
+if substr(left(trim(icd_&i.)),1,1) in ('V','E','v','e') then diag_cat&i.=17;*put "v,E" into the others group;
+if substr(left(trim(icd_&i.)),1,1) not in ('V','E','v','e') then do;
+icd_&i._str = substr(icd_&i.,1,3);
+icd_&i._diag = icd_&i._str+0;
+end;
+if (0<icd_&i._diag<140) then diag_cat&i.=1;
+if 240>icd_&i._diag>=140 then diag_cat&i.=2;
+if 280>icd_&i._diag>=240 then diag_cat&i.=3;
+if 290>icd_&i._diag>=280 then diag_cat&i.=4;
+if 320>icd_&i._diag>=290 then diag_cat&i.=5;
+if 390>icd_&i._diag>=320 then diag_cat&i.=6;
+if 460>icd_&i._diag>=390 then diag_cat&i.=7;
+if 520>icd_&i._diag>=460 then diag_cat&i.=8;
+if 580>icd_&i._diag>=520 then diag_cat&i.=9;
+if 630>icd_&i._diag>=580 then diag_cat&i.=10;
+if 678>icd_&i._diag>=630 then diag_cat&i.=11;
+if 710>icd_&i._diag>=680 then diag_cat&i.=12;
+if 740>icd_&i._diag>=710 then diag_cat&i.=13;
+if 760>icd_&i._diag>=740 then diag_cat&i.=14;
+if 780>icd_&i._diag>=760 then diag_cat&i.=15;
+if 800>icd_&i._diag>=780 then diag_cat&i.=16;
+if icd_&i._diag>=800 then diag_cat&i.=17;
+if diag_cat&i. = 2 then diag_cat&i._1 = 1;
+if diag_cat&i. = 5 then diag_cat&i._1 = 2;
+if diag_cat&i. = 6 then diag_cat&i._1 = 3;
+if diag_cat&i. = 7 then diag_cat&i._1 = 4;
+if diag_cat&i. = 8 then diag_cat&i._1 = 5;
+if diag_cat&i. = 16 then diag_cat&i._1 = 6;
+if diag_cat&i. ~= . and diag_cat&i._1 = . then diag_cat&i._1 = 7;
+
+run;
+%end;
+%mend;
+%icd2_5();
+proc freq data=table1b;
+table diag_cat2;
+run;
+
+/*
+data test (keep = bene_id icd_2 diag_cat2 icd_2_str icd_2_diag diag_cat2_1);
+set table1b;
+if diag_cat2 = 17;
+run;
+*/
+/*
+proc format;
+value prindiagfmt
+        1='NEOPLASMS'
+        2='MENTAL DISORDERS'
+        3='DISEASES OF THE NERVOUS SYSTEM AND SENSE ORGANS'
+        4='DISEASES OF THE CIRCULATORY SYSTEM'
+        5='DISEASES OF THE RESPIRATORY SYSTEM '
+        6='SYMPTOMS, SIGNS, AND ILL-DEFINED CONDITIONS'
+        7='Other'
+;
+run;
+proc format;
+value icd9catfmt
+      1='INFECTIOUS AND PARASITIC DISEASES'
+	  2='NEOPLASMS'
+	  3='ENDOCRINE, NUTRITIONAL AND METABOLIC DISEASES, AND IMMUNITY DISORDERS'
+	  4='DISEASES OF THE BLOOD AND BLOOD-FORMING ORGANS'
+	  5='MENTAL DISORDERS'
+	  6='DISEASES OF THE NERVOUS SYSTEM AND SENSE ORGANS'
+	  7='DISEASES OF THE CIRCULATORY SYSTEM'
+	  8='DISEASES OF THE RESPIRATORY SYSTEM '
+	  9='DISEASES OF THE DIGESTIVE SYSTEM'
+	  10='DISEASES OF THE GENITOURINARY SYSTEM'
+	  11='COMPLICATIONS OF PREGNANCY, CHILDBIRTH, AND THE PUERPERIUM'
+	  12='DISEASES OF THE SKIN AND SUBCUTANEOUS TISSUE'
+	  13='DISEASES OF THE SKIN AND SUBCUTANEOUS TISSUE'
+	  14='CONGENITAL ANOMALIES'
+	  15='CERTAIN CONDITIONS ORIGINATING IN THE PERINATAL PERIOD'
+	  16='SYMPTOMS, SIGNS, AND ILL-DEFINED CONDITIONS'
+	  17='INJURY AND POISONING'
+ ;
+run;
+ods rtf body = "J:\Geriatrics\Geri\Hospice Project\other_diag.rtf";
+proc freq data=table1b;
+format diag_cat2 icd9catfmt. diag_cat3 icd9catfmt. diag_cat4 icd9catfmt. diag_cat5 icd9catfmt. diag_cat2_1 prindiagfmt. diag_cat3_1 prindiagfmt. diag_cat4_1 prindiagfmt. diag_cat5_1 prindiagfmt.;
+table diag_cat2 diag_cat3 diag_cat4 diag_cat5 diag_cat2_1 diag_cat3_1 diag_cat4_1 diag_cat5_1;
+run;
+ods rtf close;
+
+data table1b_mrg (keep = bene_id icd_2-icd_5 diag_cat2 diag_cat3 diag_cat4 diag_cat5 diag_cat2_1 diag_cat3_1 diag_cat4_1 diag_cat5_1);
+set table1b;
+run;
+
+proc sql;
+create table ccw.Ltd_vars_for_analysis3
+as select a.*, b.diag_cat2, b.diag_cat3, b.diag_cat4, b.diag_cat5, b.diag_cat2_1, b.diag_cat3_1, b.diag_cat4_1, b.diag_cat5_1
+from ccw.Ltd_vars_for_analysis2 a
+left join table1b_mrg b
+on a.bene_id = b.bene_id;
+quit;
+proc freq data=ccw.Ltd_vars_for_analysis3;
+table diag_cat2;
+run;
+*/

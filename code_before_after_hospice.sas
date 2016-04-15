@@ -102,8 +102,50 @@ ods rtf close;
 
 data trunc_table5_3;
 set trunc_table5_2;
-if 
+hosp1wk = 0;
+hosp2wk = 0;
+ed1wk_ip = 0;
+ed2wk_ip = 0;
+ed1wk_op = 0;
+ed2wk_op = 0;
+	if IP_Start1 ~=. and hosp_adm_ind = 1 then do;
+		if ip_start1 - start1  <=7 then hosp1wk = 1;
+		if ip_start1 - start1 <= 14 then hosp2wk = 1;
+	end;
+	if ed_visit_ind = 1 then do;
+		
+		if (ip_icued1 = 1|ip_icued1 = 3) and ip_start1~=. then do;
+			if ip_start1 - start1 <= 7 then ed1wk_ip = 1;
+			if ip_start1 - start1 <= 14 then ed2wk_ip = 1;
+		end;
+		if ed_start1 ~= . then do;
+			if ed_start1 - start1 <=7 then ed1wk_op = 1;
+			if ed_start1 - start1 <=14 then ed2wk_op = 1;
+		end;
+	end;
+ed1wk = 0;
+ed2wk = 0;
+if ed1wk_ip = 1 or ed1wk_op = 1 then ed1wk = 1;
+if ed2wk_ip = 1 or ed2wk_op = 1 then ed2wk = 1;	
+
+run;
+proc freq data=trunc_table5_3;
+table hosp1wk hosp2wk ed1wk ed2wk;
+run;
+
+data test;
+set trunc_table5_3;
+if ed1wk = 1 and ed_start1 ~= . and ip_start1=.;
+run;
 
 data ccw.beforeafterhospice;
-set trunc_table5_2 (keep = bene_id hospital_during_hosp hospital_after_hosp ed_during_hosp ed_after_hosp icu_during_hosp icu_after_hosp hdeath_during_hosp hdeath_after_hosp);
+set trunc_table5_3 (keep = bene_id hospital_during_hosp hospital_after_hosp ed_during_hosp ed_after_hosp icu_during_hosp icu_after_hosp hdeath_during_hosp hdeath_after_hosp hosp1wk hosp2wk ed1wk ed2wk);
 run;
+
+proc sql;
+create table ccw.hsp_level_numbers1
+as select *
+from ccw.hospice_level_numbers a
+left join ccw.beforeafterhospice b
+on a.bene_id = b.bene_id;
+quit;

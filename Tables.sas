@@ -3,6 +3,10 @@ libname ccw 'J:\Geriatrics\Geri\Hospice Project\Hospice\working';
 data tables;
 set ccw.final_hosp_county;
 run;
+data test;
+set tables;
+if POS_STUDY_ID = 11671;
+run;
 
 data table1;
 set tables;

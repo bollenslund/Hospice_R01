@@ -7,12 +7,15 @@ libname costs 'N:\Documents\Downloads\Melissa\Hospice_Cost_Data\data';
 data work.hospice_base;
         set merged.hospice_base_claims_j;
 run;        
+
 /*all hopsices from our claims data*/
 
 data providers;
 set hospice_base(keep = bene_id CLM_FROM_DT PRVDR_NUM);
 pos1 = PRVDR_NUM + 0;
 run;
+
+
 data hsurvey;
 set ccw.hsurvey_r01_1;
 flag = 1;
